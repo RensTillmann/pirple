@@ -7,7 +7,7 @@ var _data = require('./lib/data');
 
 // TESTING
 // @TODO delete this
-_data.create('test', '2', {'foo' : 'bar'}, function(error){
+_data.create('test', '7', {'foo' : 'bar'}, function(error){
 	console.log('this was the error:', error);
 });
 
