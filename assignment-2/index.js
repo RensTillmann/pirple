@@ -56,7 +56,7 @@ DATA: {token: "1a48Bx1.......", order: "123456"}
 var http = require('http');
 var url = require('url');
 var StringDecoder = require('string_decoder').StringDecoder;
-
+var helpers = require('./lib/helpers');
 var fs = require('fs');
 
 // init HTTP server
@@ -92,7 +92,7 @@ var server = http.createServer(function(req, res){
 	req.on('end', function(){
 		buffer += decoder.end();
 
-		console.log(buffer);
+		
 
 		// Check if the first query string was set for this request
 		if( paths[0] ) {
@@ -107,31 +107,74 @@ var server = http.createServer(function(req, res){
 			}
 
 			// Log query strings to console
-			console.log(route, action);
+			console.log('Method:', method, 'Route:', route, 'Action:', action);
 
 			// Users route
 			if( route=='users') {
 
 				// Create a new user
-				if( action=='add' ) {
+				if( action=='add' && method=='post' ) {
 					// @TODO create a user
 
 					// Validate data
-					//console.log(req);
-					//console.log(res);
+					buffer = JSON.parse(buffer);
+					var error_msg = '';
+					if( buffer.username.length < 2 ) {
+						error_msg = 'Username to short!';
+					}
+					if( buffer.password.length < 6 ) {
+						error_msg = 'Password is not strong enough!';
+					}
+					if( buffer.name.length < 2 ) {
+						error_msg = 'Please enter your name!';
+					}
+					if( buffer.street.length < 6 ) {
+						error_msg = 'Please provide your street address!';
+					}
+					if(error_msg!=''){
+						console.log(error_msg);
+					}else{
+						// No errors where found, we can proceed creating the user
+						
+						// Check if the username already exists, if so, we must return an error and also delete the previously generated user ID because it's now obsolete
+						fs.open('.data/users/'+buffer.username+'.json', 'r', (err, fd) => {
+							if (err) {
+								if (err.code === 'ENOENT') { // Error, No Entity/Entry
 
-					//DATA: {id: "1234", username: "johnmiller", password: "anypass", name: "John Miller", email: "john@miller.com", street: "458 Ridgeview St."}
+									// First generate a unique user ID
+									// Generate a unique ID, then check if it already exists, if it does exists, regenerate, until we have a unique ID that does not exist yet
+									helpers.users.generate_id(buffer.username, false, false, true, 10, function(user_id){
 
+										// Add the ID to the buffer, to connect the user with the ID
+										// This way we can lookup users by their username as well as their user ID
+										buffer.id = user_id;
 
+										// Create the user file
+										fs.writeFile('.data/users/'+buffer.username+'.json', JSON.stringify(buffer), (err) => {
+											if(!err){
+												console.log('The user has been created!');
+											} else{
+												console.log('Error creating new user!');
+											}
+										});
 
-					fs.writeFile('.data/users/newuser.json', 'Hello Node.js', (error) => {
-						if(!error){
-							console.log('The user has been created!');
-						} else{
-							console.log('Error creating new user!');
-						}
-					});
+									});
+								}
+							}else{
 
+								console.error('This username already exists!');
+
+								// Close the file descriptor
+								fs.close(fd, function(err){
+									if(err){
+										console.log('Error closing file!');
+									}
+								});
+
+							}
+						});
+
+					}
 
 					// If .data/users folder exists, check if the username exists, if not create a new user
 
@@ -141,7 +184,7 @@ var server = http.createServer(function(req, res){
 				}
 
 				// Login users
-				if( action=='login' ) {
+				if( action=='login' && method=='post' ) {
 					// @TODO create token
 
 					// Validate that the user exists
@@ -153,8 +196,8 @@ var server = http.createServer(function(req, res){
 
 				}
 
-				// Login users
-				if( action=='logout' ) {
+				// Logout users
+				if( action=='logout' && method=='post' ) {
 					// @TODO remove token
 
 					// Remove token from user
@@ -167,7 +210,7 @@ var server = http.createServer(function(req, res){
 			if( route=='items') {
 
 				// Retrieve all menu items via http GET request
-				if( action=='list' ) {
+				if( action=='list' && method=='get' ) {
 					// @TODO return list of menu items
 
 					// Check if token is valid
@@ -182,7 +225,7 @@ var server = http.createServer(function(req, res){
 			if( route=='cart') {
 				
 				// Add menu items to the shopping cart
-				if( action=='add' ) {
+				if( action=='add' && method=='post' ) {
 					// @TODO add menu items to new order, append new items if order exists
 
 					// Check if token is valid
@@ -194,7 +237,7 @@ var server = http.createServer(function(req, res){
 				}
 
 				// Submit order to Stripe API
-				if( action=='checkout' ) {
+				if( action=='checkout' && method=='post' ) {
 					// @TODO save order, and send user to Stripe
 
 					// Check if token is valid
