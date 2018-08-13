@@ -42,7 +42,7 @@ lib.append = function(file,content,callback){
 // List all the logs, and optionally include the compressed logs
 lib.list = function(inc_compressed,callback){
 	fs.readdir(lib.baseDir, function(err,data){
-		if(!err && data && date.length > 0){
+		if(!err && data && data.length > 0){
 			var trimmed = [];
 			data.forEach(function(file){
 				// Only add the .log files

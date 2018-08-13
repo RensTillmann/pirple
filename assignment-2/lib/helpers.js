@@ -25,7 +25,7 @@ helpers.parseJsonToObject = function(string){
 // Create a SHA256 hash
 helpers.hash = function(string){
 	if(typeof(string) == 'string' && string.length > 0){
-		var hash = crypto.createHmac('sha256', config.hashing_secret).update(string),digest('hex');
+		var hash = crypto.createHmac('sha256', config.hashing_secret).update(string).digest('hex');
 		return hash;
 	}else{
 		return false;
