@@ -121,6 +121,9 @@ server.unifiedServer = function(req,res){
 // This will route all the API request to the correct handler
 server.router = {
 	'ping' : handlers.ping,
+	'checkout' : handlers.checkout,
+	'cart' : handlers.cart,
+	'menu' : handlers.menu,
 	'users' : handlers.users,
 	'tokens' : handlers.tokens,
 	'checks' : handlers.checks

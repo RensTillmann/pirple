@@ -7,6 +7,8 @@
 var _data = require('./data');
 var helpers = require('./helpers');
 var config = require('./config');
+var stripe = require("stripe")(config.stripe_key);
+var mailgun = require('mailgun-js')({apiKey: config.mailgun_key, domain: config.mailgun_domain});
 
 // Define all the handlers
 var handlers = {};
@@ -23,6 +25,250 @@ handlers.not_found = function(data,callback){
 	callback(404); // 404 Not Found
 };
 
+
+// Checkout cart / create order
+handlers.checkout = function(data,callback){
+	var accepted_methods = ['put'];
+	if(accepted_methods.indexOf(data.method) != -1){
+		handlers._checkout[data.method](data,callback);
+	}else{
+		callback(405); // 405 Method Not Allowed
+	}
+};
+
+// Container for the checkout
+handlers._checkout = {};
+
+// PUT
+// Create a new order (update user orders)
+// Required payload data: email, items
+// Required headers: token
+handlers._checkout.put = function(data,callback){
+	// Check that all require dfields are filled out
+	var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
+	var items = typeof(data.payload.items) == 'object' && data.payload.items instanceof Object ? data.payload.items : [];
+	if(email && items){
+	
+		// Get token from headers
+		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
+		// Verify that the given token is valid for the email
+		handlers._tokens.verify(token,email,function(valid){
+			if(valid){
+				// Lookup the user
+				_data.read('users',email,function(err,data){
+					if(!err && data){
+						if(items) {
+							
+							// Loop through the payload items, and add the menu item information (name, price). and append the quantity
+							var amount = 0; // Total order amount
+							var order_items = [];
+							Object.keys(items).forEach(function(index) {
+								var val = items[index];
+								if(config.menu_items[index]){
+									amount = amount + config.menu_items[index].price * val;
+									config.menu_items[index].quantity = val;
+									order_items.push(config.menu_items[index]);
+								}
+							});
+
+							// Update data only if necessary
+							if(order_items.length){
+								if(typeof data.orders === 'undefined'){
+									data.orders = new Array();
+								}
+								data.orders.push([{
+									date: Date.now(),
+									items: order_items
+								}]);
+
+
+								
+								_data.update('users',email,data,function(err){
+									if(!err){
+										stripe.charges.create({
+										  	amount: amount,
+										  	currency: 'usd',
+										    description: 'Pizza order',
+										  	source: 'tok_visa',
+										  	receipt_email: 'jenny.rosen@example.com',
+										}).then((charge) => {
+
+											// Send confirmation email
+											var html = 'Order completed, you can view your order below:';
+											html += '<table>';
+												html += '<tr><th>Quantity</th><th>Item</th><th>Price</th><th>Amount</th></tr>';
+												order_items.forEach(function(value){
+													html += '<tr><td>'+value.quantity+' x</td><td>'+value.name+'</td><td align="right">$'+(value.price/100)+',-</td><td align="right">$'+((value.price/100)*value.quantity)+',-</td></tr>';
+												});
+												html += '<tr><td colspan="3" align="right">Total</td><th align="right">$'+(amount/100)+',-</th></tr>';
+											html += '</table>';
+											var data = {
+											  from: 'Pizza Tokio <no-reply@pizza-tokio.com>',
+											  to: 'feeling4design@gmail.com',
+											  subject: 'Pizza will be delivered shortly!',
+											  html: html
+											};
+											mailgun.messages().send(data, function (err, body) {
+												if(!err){
+													callback(200);
+													console.log(body);
+												}else{
+													callback(500, {'Error' : err});
+													console.log(err);
+												}
+											});
+
+										}).catch((err) => {
+										    callback(500, {'Error' : err});
+										});
+									}else{
+										callback(500, {'Error' : 'Could not create order.'}); // 500 Internal Server Error
+									}
+								});
+								
+
+							}else{
+								callback(500, {'Error' : 'There was nothing to be added to the order, perhaps the menu item no longer exists.'}); // 500 Internal Server Error
+							}
+						}
+					}else{
+          				callback(400, {'Error' : 'Specified user does not exist.'}); // 400 Bad Request Error
+					}
+				});
+			}else{
+				callback(403, {"Error" : "Missing required token in header, or token is invalid."}); // 403 Forbidden Error
+			}
+		});
+
+	}else{
+		callback(400, {'Error' : 'Missing required fields'}); // 400 Bad Request Error
+	}
+}
+
+
+// Shpping cart
+handlers.cart = function(data,callback){
+	var accepted_methods = ['get', 'put'];
+	if(accepted_methods.indexOf(data.method) != -1){
+		handlers._cart[data.method](data,callback);
+	}else{
+		callback(405); // 405 Method Not Allowed
+	}
+};
+
+// Container for the shopping cart
+handlers._cart = {};
+
+// PUT
+// Update users shopping cart items
+// Required payload data: email
+// Required headers: token
+// Optional data: items (contains the menu item ID's that need to be added and it's quantity) e.g  {"1": "1", "2": "3", "3": "1"}
+handlers._cart.put = function(data,callback){
+	// Check for required field
+	var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
+	if(email){	
+
+		// Check for optional fields
+		var items = typeof(data.payload.items) == 'string' && data.payload.items.trim().length > 0 ? data.payload.items.trim() : false;
+    	
+    	// Error if nothing is sent to update
+    	if(items){
+    		// Get token from headers
+    		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
+			// Verify that the given token is valid for the email
+			handlers._tokens.verify(token,email,function(valid){
+				if(valid){
+					// Lookup the user
+					_data.read('users',email,function(err,data){
+						if(!err && data){
+							// Update data only if necessary
+							if(items) data.cart = items;
+
+							// Store the new data
+							_data.update('users',email,data,function(err){
+								if(!err){
+									callback(200);
+								}else{
+									callback(500, {'Error' : 'Could not update cart items.'}); // 500 Internal Server Error
+								}
+							});
+						}else{
+              				callback(400, {'Error' : 'Specified user does not exist.'}); // 400 Bad Request Error
+						}
+					});
+				}else{
+					callback(403, {"Error" : "Missing required token in header, or token is invalid."}); // 403 Forbidden Error
+				}
+			});
+
+    	}else{
+    		callback(400,{'Error' : 'Missing fields to update.'}); // 400 Bad Request Error
+    	}
+
+	}else{
+		callback(400, {'Error' : 'Missing required field'}); // 400 Bad Request Error
+	}
+
+}
+
+// GET
+// Retrieve shopping cart
+// Required query string: email
+// Required headers: token
+handlers._cart.get = function(data,callback){
+	var email = typeof(data.query_string_object.email) == 'string' && data.query_string_object.email.trim().length > 0 ? data.query_string_object.email.trim() : false;
+	if(email){
+		// Get token from headers
+		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
+
+		// Verify that the given token is valid for the email
+		handlers._tokens.verify(token,email,function(valid){
+			if(valid){
+				callback(200, config.menu_items);
+			}else{
+				callback(403, {"Error" : "Missing required token in header, or token is invalid."}); // 403 Forbidden Error
+			}
+		});
+	}
+}
+
+
+// Menu items
+handlers.menu = function(data,callback){
+	var accepted_methods = ['get'];
+	if(accepted_methods.indexOf(data.method) != -1){
+		handlers._menu[data.method](data,callback);
+	}else{
+		callback(405); // 405 Method Not Allowed
+	}
+};
+
+// Container for all the menu item methods
+handlers._menu = {};
+
+// GET
+// Retrieve menu items
+// Required query string: email
+// Required headers: token
+handlers._menu.get = function(data,callback){
+	var email = typeof(data.query_string_object.email) == 'string' && data.query_string_object.email.trim().length > 0 ? data.query_string_object.email.trim() : false;
+	if(email){
+		// Get token from headers
+		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
+
+		// Verify that the given token is valid for the email
+		handlers._tokens.verify(token,email,function(valid){
+			if(valid){
+				callback(200, config.menu_items);
+			}else{
+				callback(403, {"Error" : "Missing required token in header, or token is invalid."}); // 403 Forbidden Error
+			}
+		});
+	}
+}
+
+
 // Users
 handlers.users = function(data,callback){
 	var accepted_methods = ['post', 'get', 'put', 'delete'];
@@ -36,19 +282,20 @@ handlers.users = function(data,callback){
 // Container for all the users methods
 handlers._users = {};
 
-// User - post
-// Required data: first_name, last_name, phone, password, tos
+// POST
+// Create a new users
+// Required payload data: name, email address, and street address.
 handlers._users.post = function(data,callback){
 	// Check that all require dfields are filled out
-	var first_name = typeof(data.payload.first_name) == 'string' && data.payload.first_name.trim().length > 0 ? data.payload.first_name.trim() : false;
-	var last_name = typeof(data.payload.last_name) == 'string' && data.payload.last_name.trim().length > 0 ? data.payload.last_name.trim() : false;
-	var phone = typeof(data.payload.phone) == 'string' && data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
+	var name = typeof(data.payload.name) == 'string' && data.payload.name.trim().length > 0 ? data.payload.name.trim() : false;
+	var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
+	var address = typeof(data.payload.address) == 'string' && data.payload.address.trim().length > 0 ? data.payload.address.trim() : false;
+	var street = typeof(data.payload.street) == 'string' && data.payload.street.trim().length > 0 ? data.payload.street.trim() : false;
 	var password = typeof(data.payload.password) == 'string' && data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
-	var tos = typeof(data.payload.tos) == 'boolean' && data.payload.tos == true ? true : false;
 
-	if(first_name && last_name && phone && password && tos){
+	if(name && email && address && street && password){
 		// Make sure the user doesn't already exist
-		_data.read('users',phone,function(err,data){
+		_data.read('users',email,function(err,data){
 			if(err){
 				// Hash the password
 				var hashed_pass = helpers.hash(password);
@@ -56,15 +303,15 @@ handlers._users.post = function(data,callback){
 				// Create the user object
 				if(hashed_pass){
 					var user = {
-						'first_name' : first_name,
-						'last_name' : last_name,
-						'phone' : phone,
-						'hashed_pass' : hashed_pass,
-						'tos' : true
+						'name' : name,
+						'email' : email,
+						'address' : address,
+						'street' : street,
+						'hashed_pass' : hashed_pass
 					};
 
 					// Store the user
-					_data.create('users',phone,user,function(err){
+					_data.create('users',email,user,function(err){
 						if(!err){
 							callback(200);
 						}else{
@@ -78,7 +325,7 @@ handlers._users.post = function(data,callback){
 
 			}else{
 				// User already exists
-				callback(500, {'Error' : 'A user with that phone number already exists'}); // 500 Internal Server Error
+				callback(500, {'Error' : 'A user with that email already exists'}); // 500 Internal Server Error
 			}
 
 		});
@@ -88,21 +335,23 @@ handlers._users.post = function(data,callback){
 	}
 }
 
-// User - get
-// Required data: phone
+// GET
+// Retrieve user data
+// Required query string: email
+// Required headers: token
 handlers._users.get = function(data,callback){
-	// Check that the phone number is valid
-	var phone = typeof(data.query_string_object.phone) == 'string' && data.query_string_object.phone.trim().length == 10 ? data.query_string_object.phone.trim() : false;
-	if(phone){
+	// Check that the email is valid
+	var email = typeof(data.query_string_object.email) == 'string' && data.query_string_object.email.trim().length > 0 ? data.query_string_object.email.trim() : false;
+	if(email){
 
 		// Get token from headers
 		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
 
-		// Verify that the given token is valid for the phone number
-		handlers._tokens.verify(token,phone,function(valid){
+		// Verify that the given token is valid for the email
+		handlers._tokens.verify(token,email,function(valid){
 			if(valid){
 				// Lookup the user
-				_data.read('users',phone,function(err,data){
+				_data.read('users',email,function(err,data){
 					if(!err && data){
 						// Remove the hashed password from the user object before returning it to the requester
 						delete data.hashed_pass;
@@ -121,36 +370,42 @@ handlers._users.get = function(data,callback){
 	}
 };
 
-// User - put
-// Required data: phone
-// Optional data: first_name, last_name, password (at least one must be specified)
+// PUT
+// Update user data
+// Required payload data: email
+// Required headers: token
+// Optional data: name, email, address, street, password (at least one must be specified)
 handlers._users.put = function(data,callback){
 	// Check for required field
-	var phone = typeof(data.payload.phone) == 'string' && data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
-	if(phone){	
+	var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
+	if(email){	
 
 		// Check for optional fields
-		var first_name = typeof(data.payload.first_name) == 'string' && data.payload.first_name.trim().length > 0 ? data.payload.first_name.trim() : false;
-		var last_name = typeof(data.payload.last_name) == 'string' && data.payload.last_name.trim().length > 0 ? data.payload.last_name.trim() : false;
+		var name = typeof(data.payload.name) == 'string' && data.payload.name.trim().length > 0 ? data.payload.name.trim() : false;
+		var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
+		var address = typeof(data.payload.address) == 'string' && data.payload.address.trim().length > 0 ? data.payload.address.trim() : false;
+		var street = typeof(data.payload.street) == 'string' && data.payload.street.trim().length > 0 ? data.payload.street.trim() : false;
 		var password = typeof(data.payload.password) == 'string' && data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
     	
     	// Error if nothing is sent to update
-    	if(first_name || last_name || password){
+    	if(name || email || address || street || password){
     		// Get token from headers
     		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
-			// Verify that the given token is valid for the phone number
-			handlers._tokens.verify(token,phone,function(valid){
+			// Verify that the given token is valid for the email
+			handlers._tokens.verify(token,email,function(valid){
 				if(valid){
 					// Lookup the user
-					_data.read('users',phone,function(err,data){
+					_data.read('users',email,function(err,data){
 						if(!err && data){
 							// Update data only if necessary
-							if(first_name) data.first_name = first_name;
-							if(last_name) data.last_name = last_name;
+							if(name) data.name = name;
+							if(email) data.email = email;
+							if(address) data.address = address;
+							if(street) data.street = street;
 							if(password) data.password = helpers.hash(password);
 
 							// Store the new data
-							_data.update('users',phone,data,function(err){
+							_data.update('users',email,data,function(err){
 								if(!err){
 									callback(200);
 								}else{
@@ -176,24 +431,26 @@ handlers._users.put = function(data,callback){
 
 };
 
-// Users - delete
-// Required data: phone
+// DELETE
+// Delete a user
+// Required query strings: email
+// Required headers: token
 // Cleanup old checks associated with the user
 handlers._users.delete = function(data,callback){
 	// Check for required field
-	var phone = typeof(data.query_string_object.phone) == 'string' && data.query_string_object.phone.trim().length == 10 ? data.query_string_object.phone.trim() : false;
-	if(phone){	
+	var email = typeof(data.query_string_object.email) == 'string' && data.query_string_object.email.trim().length > 0 ? data.query_string_object.email.trim() : false;
+	if(email){	
 
 		// Get token from headers
 		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
-		// Verify that the given token is valid for the phone number
-		handlers._tokens.verify(token,phone,function(valid){
+		// Verify that the given token is valid for the email
+		handlers._tokens.verify(token,email,function(valid){
 			if(valid){
 				// Lookup the user
-				_data.read('users',phone,function(err,data){
+				_data.read('users',email,function(err,data){
 					if(!err && data){
 						// Delete the user's data
-						_data.delete('users',phone,function(err){
+						_data.delete('users',email,function(err){
 							if(!err){
 								// Delete each of the checks associated with the user
 								var checks = typeof(data.checks) == 'object' && data.checks instanceof Array ? data.checks : [];
@@ -253,15 +510,16 @@ handlers.tokens = function(data,callback){
 // Container for all the tokens methods
 handlers._tokens = {};
 
-// Tokens - post
-// Required data: phone, password
+// POST
+// Create a token
+// Required payload data: email, password
 handlers._tokens.post = function(data,callback){
 	// Check for required field
-	var phone = typeof(data.payload.phone) == 'string' && data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
+	var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
 	var password = typeof(data.payload.password) == 'string' && data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
-	if(phone && password){
+	if(email && password){
 		// Lookup the user
-		_data.read('users',phone,function(err,data){
+		_data.read('users',email,function(err,data){
 			if(!err && data){
 				// Hash the password and compare it
 				var hashed_pass = helpers.hash(password);
@@ -271,7 +529,7 @@ handlers._tokens.post = function(data,callback){
 					var token_id = helpers.createRandomString(20);
 					var expires = Date.now() + 1000 * 60 * 60;
 					var token = {
-						'phone' : phone,
+						'email' : email,
 						'id' : token_id,
 						'expires' : expires
 					};
@@ -296,7 +554,8 @@ handlers._tokens.post = function(data,callback){
 	}
 };
 
-// Tokens - get
+// GET
+// Retrieve token
 // Required data: id
 handlers._tokens.get = function(data,callback){
 	// Check that id is valid
@@ -315,7 +574,8 @@ handlers._tokens.get = function(data,callback){
   	}
 };
 
-// Tokens - put
+// PUT
+// Update token
 // Required data: id, extend
 handlers._tokens.put = function(data,callback){
 	var id = typeof(data.payload.id) == 'string' && data.payload.id.trim().length == 20 ? data.payload.id.trim() : false;
@@ -348,7 +608,8 @@ handlers._tokens.put = function(data,callback){
   	}
 };
 
-// Tokens - delete
+// DELETE
+// Delete a token
 // Required data: id
 handlers._tokens.delete = function(data,callback){
 	// Check that the token id is valid
@@ -375,12 +636,12 @@ handlers._tokens.delete = function(data,callback){
 };
 
 // Verify that the given token is currently valid for a given user
-handlers._tokens.verify = function(id,phone,callback){
+handlers._tokens.verify = function(id,email,callback){
 	// Lookup the token
 	_data.read('tokens',id,function(err,token){
 		if(!err && token){
 			// Check that the token is for the given user and has not expired
-			if(token.phone == phone && token.expires > Date.now()){
+			if(token.email == email && token.expires > Date.now()){
 				callback(true);
 			}else{
 				callback(false);
@@ -418,21 +679,21 @@ handlers._checks.post = function(data,callback){
 		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
 
 		if(token){
-			// Lookup the user phone by reading the token
+			// Lookup the user email by reading the token
 			_data.read('tokens',token,function(err,token){
 				if(!err && token){
 					// Lookup the user
-					_data.read('users',token.phone,function(err,user){
+					_data.read('users',token.email,function(err,user){
 						var checks = typeof(user.checks) == 'object' && user.checks instanceof Array ? user.checks : [];
 						// Verify that the user has less than the number of max-checks per user
 						if(checks.length < config.max_checks){
 							// Create a random ID for this check
 							var check_id = helpers.createRandomString(20);
 
-							// Create check object including the phone of the user
+							// Create check object including the email of the user
 							var check = {
 								'id' : check_id,
-								'user' : phone,
+								'user' : email,
 								'protocol' : protocol,
 								'url' : url,
 								'method' : method,
@@ -448,7 +709,7 @@ handlers._checks.post = function(data,callback){
 									user.checks.push(check_id);
 
 									// Save the new user data
-									_data.update('users',phone,user,function(err){
+									_data.update('users',email,user,function(err){
 										if(!err){
 											// Return the data about the new check
 											callback(200, check);
@@ -488,7 +749,7 @@ handlers._checks.get = function(data,callback){
 				// Get the token from the header
 				var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
 				// Verify that the given token is valid and belongs to the user who created the check
-				handlers._tokens.verify(token,check.phone,function(valid){
+				handlers._tokens.verify(token,check.email,function(valid){
 					if(valid){
 						// Return the check object
 						callback(200, check);
@@ -532,7 +793,7 @@ handlers._checks.put = function(data,callback){
 					// Get the token from the header
 					var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
 					// Verify that the given token is valid and belongs to the user who created the check
-					handlers._tokens.verify(token,check.phone,function(valid){
+					handlers._tokens.verify(token,check.email,function(valid){
 						if(valid){
 							// Update check data where necessary
 							if(protocol) check.protocol = protocol;
@@ -581,13 +842,13 @@ handlers._checks.delete = function(data,callback){
 				// Get the token from the header
 				var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
 				// Verify that the given token is valid and belongs to the user who created the check
-				handlers._tokens.verify(token,check.phone,function(valid){
+				handlers._tokens.verify(token,check.email,function(valid){
 					if(valid){
 						// Delete the check
 						_data.delete('checks',id,function(err){
 							if(!err){
 								// Lookup the user's object to get all their checks
-								_data.read('users',check.phone,function(err,user){
+								_data.read('users',check.email,function(err,user){
 									if(!err){
 										var checks = typeof(user.checks) == 'object' && user.checks instanceof Array ? user.checks : [];
 										// Remove the deleted check from their list of checks
@@ -597,7 +858,7 @@ handlers._checks.delete = function(data,callback){
 											checks.splice(index, 1);
 											// Update the checks on the user data
 											user.checks = checks;
-											_data.update('users',check.phone,user,function(err){
+											_data.update('users',check.email,user,function(err){
 												if(!err){
 													callback(200);
 												}else{

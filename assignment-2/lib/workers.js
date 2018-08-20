@@ -47,7 +47,7 @@ workers.validate = function(data){
 	data = typeof(data) == 'object' && data !== null ? data : {};
 
 	data.id = typeof(data.id) == 'string' && data.id.trim().length == 20 ? data.id.trim() : false;
-	data.userPhone = typeof(data.userPhone) == 'string' && data.userPhone.trim().length == 10 ? data.userPhone.trim() : false;
+	data.email = typeof(data.email) == 'string' && data.email.trim().length > 0 ? data.email.trim() : false;
 	data.protocol = typeof(data.protocol) == 'string' && ['http','https'].indexOf(data.protocol) > -1 ? data.protocol : false;
 	data.url = typeof(data.url) == 'string' && data.url.trim().length > 0 ? data.url.trim() : false;
 	data.method = typeof(data.method) == 'string' &&  ['post','get','put','delete'].indexOf(data.method) > -1 ? data.method : false;
@@ -59,7 +59,7 @@ workers.validate = function(data){
 	data.last_checked = typeof(data.last_checked) == 'number' && data.last_checked > 0 ? data.last_checked : false;
 
 	// If all checks pass, pass the data along to the next step in the process
-	if(data.id && data.userPhone && data.protocol && data.url && data.method && data.success_codes && data.timeoutSeconds){
+	if(data.id && data.email && data.protocol && data.url && data.method && data.success_codes && data.timeoutSeconds){
 		workers.check(data);
 	}else{
 		// If checks fail, log the error and fail silently

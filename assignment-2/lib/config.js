@@ -3,6 +3,13 @@
  *
  */
 
+// Harcode menu items
+var menu_items = {
+    "1": {"name":"Pizza 1", "price":1000},
+    "2": {"name":"Pizza 2", "price":2000},
+    "3": {"name":"Pizza 3", "price":3000},
+}
+
 // Container for all environments
 var environments = {};
 
@@ -17,7 +24,11 @@ environments.staging = {
     	'accountSid' : 'ACb32d411ad7fe886aac54c665d25e5c5d',
     	'authToken' : '9455e3eb3109edc12e3d8c92768f7a67',
     	'fromPhone' : '+15005550006'
-	}
+	},
+	'stripe_key' : 'sk_test_CczNHRNSYyr4TenhiCp7Oz05',
+	'mailgun_key' : '4d43e741e108b25c9386cc6d2d32b719-a4502f89-716ab12b',
+	'mailgun_domain' : 'sandbox10a26fc216354b19be1a104c3b1d824a.mailgun.org',
+	'menu_items': menu_items
 };
 
 // Production environment
@@ -31,7 +42,11 @@ environments.production = {
 		'accountSid' : '',
 		'authToken' : '',
 		'fromPhone' : ''
-	}
+	},
+	'stripe_key' : '<secret>',
+	'mailgun_key' : '<secret>',
+	'mailgun_domain' : 'sandbox10a26fc216354b19be1a104c3b1d824a.mailgun.org',
+	'menu_items': menu_items
 };
 
 // Determine which environment was passed as a command-line argument
