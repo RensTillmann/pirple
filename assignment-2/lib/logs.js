@@ -17,12 +17,12 @@ lib.baseDir = path.join(__dirname,'/../.logs/');
 // Append a string to a file. Create the file if it does not exist
 lib.append = function(file,content,callback){
 	// Open the file for appending
-	fs.open(lib.baseDir+file+'.log', 'a', function(err, fs){
-		if(!err && fs){
+	fs.open(lib.baseDir+file+'.log', 'a', function(err, fd){
+		if(!err && fd){
 			// Append to file and close it
-			fs.appendFile(fs, content+'\n',function(err){
+			fs.appendFile(fd, content+'\n',function(err){
 				if(!err){
-					fs.close(fs,function(err){
+					fs.close(fd,function(err){
 						if(!err){
 							callback(false);
 						}else{
@@ -73,13 +73,13 @@ lib.compress = function(file,new_file,callback){
 			zlib.gzip(data,function(err,buffer){
 				if(!err && buffer){
 					// Send the data to the destination file
-					fs.open(lib.baseDir+destination, 'wx', function(err, fs){
+					fs.open(lib.baseDir+destination, 'wx', function(err, fd){
 						if(!err && fs){
 							// Write to the destination file
-							fs.writeFile(fs,buffer.toString('base64'),function(err){
+							fs.writeFile(fd,buffer.toString('base64'),function(err){
 								if(!err){
 									// Close the destination file
-									fs.close(fs,function(err){
+									fs.close(fd,function(err){
 										if(!err){
 											callback(false);
 										}else{

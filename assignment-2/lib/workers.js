@@ -191,7 +191,7 @@ workers.log = function(data,result,state,alert,time){
 	};
 
 	// Convert the content to a string
-	content = JSON.strigify(content);
+	content = JSON.stringify(content);
 
 	// Determine the name of the log file
 	var file = data.id;

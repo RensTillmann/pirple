@@ -4,7 +4,7 @@
  */
 
 // Dependencies
-var data = require('./data');
+var _data = require('./data');
 var helpers = require('./helpers');
 var config = require('./config');
 
@@ -92,7 +92,7 @@ handlers._users.post = function(data,callback){
 // Required data: phone
 handlers._users.get = function(data,callback){
 	// Check that the phone number is valid
-	var phone = typeof(data.payload.phone) == 'string' && data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
+	var phone = typeof(data.query_string_object.phone) == 'string' && data.query_string_object.phone.trim().length == 10 ? data.query_string_object.phone.trim() : false;
 	if(phone){
 
 		// Get token from headers
@@ -135,7 +135,7 @@ handlers._users.put = function(data,callback){
 		var password = typeof(data.payload.password) == 'string' && data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
     	
     	// Error if nothing is sent to update
-    	if(firstName || lastName || password){
+    	if(first_name || last_name || password){
     		// Get token from headers
     		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
 			// Verify that the given token is valid for the phone number
@@ -181,7 +181,7 @@ handlers._users.put = function(data,callback){
 // Cleanup old checks associated with the user
 handlers._users.delete = function(data,callback){
 	// Check for required field
-	var phone = typeof(data.payload.phone) == 'string' && data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
+	var phone = typeof(data.query_string_object.phone) == 'string' && data.query_string_object.phone.trim().length == 10 ? data.query_string_object.phone.trim() : false;
 	if(phone){	
 
 		// Get token from headers
@@ -196,7 +196,7 @@ handlers._users.delete = function(data,callback){
 						_data.delete('users',phone,function(err){
 							if(!err){
 								// Delete each of the checks associated with the user
-								var checks = typof(data.checks) == 'object' && data.checks instanceof Array ? data.checks : [];
+								var checks = typeof(data.checks) == 'object' && data.checks instanceof Array ? data.checks : [];
 								var total = checks.length;
 								if(total > 0){
 									var deleted = 0;
@@ -297,8 +297,27 @@ handlers._tokens.post = function(data,callback){
 };
 
 // Tokens - get
-// Required data: id, extend
+// Required data: id
 handlers._tokens.get = function(data,callback){
+	// Check that id is valid
+	var id = typeof(data.query_string_object.id) == 'string' && data.query_string_object.id.trim().length == 20 ? data.query_string_object.id.trim() : false;
+  	if(id){
+  		// Lookup the existing token
+  		_data.read('tokens',id,function(err,token){
+  			if(!err && token){
+				callback(200);
+			}else{
+				callback(404); // 404 Not found
+			}
+  		});
+  	}else{
+  		callback(400, {"Error": "Missing required field(s) or field(s) are invalid."}); // 400 Bad Request Error
+  	}
+};
+
+// Tokens - put
+// Required data: id, extend
+handlers._tokens.put = function(data,callback){
 	var id = typeof(data.payload.id) == 'string' && data.payload.id.trim().length == 20 ? data.payload.id.trim() : false;
   	var extend = typeof(data.payload.extend) == 'boolean' && data.payload.extend == true ? true : false;
   	if(id && extend){
@@ -329,11 +348,11 @@ handlers._tokens.get = function(data,callback){
   	}
 };
 
-// Toekens - delete
+// Tokens - delete
 // Required data: id
 handlers._tokens.delete = function(data,callback){
 	// Check that the token id is valid
-	var id = typeof(data.payload.id) == 'string' && data.payload.id.trim().length == 20 ? data.payload.id.trim() : false;
+	var id = typeof(data.query_string_object.id) == 'string' && data.query_string_object.id.trim().length == 20 ? data.query_string_object.id.trim() : false;
 	if(id){
 		// Lookup the existing token
   		_data.read('tokens',id,function(err,token){
@@ -461,7 +480,7 @@ handlers._checks.post = function(data,callback){
 // Required data: id
 handlers._checks.get = function(data,callback){
 	// Check that the token id is valid
-	var id = typeof(data.payload.id) == 'string' && data.payload.id.trim().length == 20 ? data.payload.id.trim() : false;
+	var id = typeof(data.query_string_object.id) == 'string' && data.query_string_object.id.trim().length == 20 ? data.query_string_object.id.trim() : false;
 	if(id){
 		// Lookup the check
 		_data.read('checks',id,function(err,check){
@@ -551,7 +570,7 @@ handlers._checks.put = function(data,callback){
 // Required data: id
 handlers._checks.delete = function(data,callback){
 	// Check for required fields
-	var id = typeof(data.payload.id) == 'string' && data.payload.id.trim().length == 20 ? data.payload.id.trim() : false;
+	var id = typeof(data.query_string_object.id) == 'string' && data.query_string_object.id.trim().length == 20 ? data.query_string_object.id.trim() : false;
 
   	// Error if id is invalid
   	if(id){

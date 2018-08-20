@@ -22,14 +22,14 @@ lib.create = function(dir,file,data,callback){
 	// file == 123456
 	// wx = write + read
 	fs.open(lib.baseDir+dir+'/'+file+'.json', 'wx', function(err, fd){ // Returns error and a file descriptor
-		if(!err && fs){
+		if(!err && fd){
 			// Convert data to string
-			var json = JSON.strigify(data);
+			var json = JSON.stringify(data);
 
 			// Write to file and close it
-			fs.writeFile(fs,json,function(err){
+			fs.writeFile(fd,json,function(err){
 				if(!err){
-					fs.close(fs,function(err){
+					fs.close(fd,function(err){
 						if(!err){
 							callback(false);
 						}else{
@@ -62,18 +62,18 @@ lib.read = function(dir,file,callback){
 lib.update = function(dir,file,data,callback){
 	// Open the file for writing
 	// r+ == Open file for reading and writing. An exception occurs if the file does not exist.
-	fs.open(lib.baseDir+dir+'/'+file+'.json', 'r+', function(err, fs){
-		if(!err && fs){
+	fs.open(lib.baseDir+dir+'/'+file+'.json', 'r+', function(err, fd){
+		if(!err && fd){
 			// Convert data to string
 			var json = JSON.stringify(data);
 
 			// Truncate the file (delete all contents / empty the file)
-			fs.truncate(fs,function(err){
+			fs.truncate(fd,function(err){
 				if(!err){
 					// Write to the file and close it
-					fs.writeFile(fs, json, function(err){
+					fs.writeFile(fd, json, function(err){
 						if(!err){
-							fs.close(fs,function(err){
+							fs.close(fd,function(err){
 								if(!err){
 									callback(false);
 								}else{
