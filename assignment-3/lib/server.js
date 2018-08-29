@@ -78,6 +78,9 @@ server.unifiedServer = function(req,res){
 		// Check if a handler exist for the request defined in our router, if one is not found use the not_found handler instead.
 		var handler = typeof(server.router[trimmed_path]) !== 'undefined' ? server.router[trimmed_path] : handlers.not_found;
 
+		// If the request is within the public directory, use the public handler instead
+		handler = trimmed_path.indexOf('public/') != -1 ? handlers.public : handler;
+
 		// Construct the data object that will be send to the handler
 		var data = {
 			'trimmed_path' : trimmed_path,
@@ -99,22 +102,35 @@ server.unifiedServer = function(req,res){
 			// Return the response-parts that are content specific
 			var payload_string = '';
 			if(type=='json'){
-				// Use the payload returned from the handler or set the default payload to an empty object
 				payload = typeof(payload) == 'object' ? payload : {};
-				
-				// Convert the payload to a string
 				var payload_string = JSON.stringify(payload);
-				
-				// Set content type to be json
 				res.setHeader('Content-Type', 'application/json');
 			}
 			if(type=='html'){
-				// Use the payload returned from the handler or set the default payload to an empty string
 				payload_string = typeof(payload) == 'string' ? payload : '';
-
-				// Set content type to be json
 				res.setHeader('Content-Type', 'text/html');
 			}
+			if(type=='favicon'){
+				payload_string = typeof(payload) !== 'undefined' ? payload : '';
+				res.setHeader('Content-Type', 'image/x-icon');
+			}
+			if(type=='css'){
+				payload_string = typeof(payload) !== 'undefined' ? payload : '';
+				res.setHeader('Content-Type', 'text/css');
+			}
+			if(type=='png'){
+				payload_string = typeof(payload) !== 'undefined' ? payload : '';
+				res.setHeader('Content-Type', 'image/png');
+			}
+			if(type=='jpg'){
+				payload_string = typeof(payload) !== 'undefined' ? payload : '';
+				res.setHeader('Content-Type', 'image/jpeg');
+			}
+			if(type=='plain'){
+				payload_string = typeof(payload) !== 'undefined' ? payload : '';
+				res.setHeader('Content-Type', 'text/plain');
+			}
+
 
 			// Return the response-parts that are common to all content types
 			res.writeHead(status);
@@ -156,7 +172,9 @@ server.router = {
 	'api/menu' : handlers.menu,
 	'api/users' : handlers.users,
 	'api/tokens' : handlers.tokens,
-	'api/checks' : handlers.checks
+	'api/checks' : handlers.checks,
+	'favicon.ico' : handlers.favicon,
+	'public' : handlers.public
 };
 
 

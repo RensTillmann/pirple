@@ -178,5 +178,22 @@ helpers.replace_tags = function(str,data){
 	return str;
 }
 
+// Get the contents of a static (public) asset
+helpers.get_static_asset = function(name,callback){
+	name = typeof(name) == 'string' && name.length > 0 ? name : false;
+	if(name){
+		var dir = path.join(__dirname,'/../public/');
+		fs.readFile(dir+name,function(err,data){
+			if(!err && data){
+				callback(false,data);
+			}else{
+				callback('No file could be found');
+			}
+		});
+	}else{
+		callback('A valid file name was not specified');		
+	}
+}
+
 // Export the module
 module.exports = helpers;

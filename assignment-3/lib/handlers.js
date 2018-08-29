@@ -51,6 +51,59 @@ handlers.index = function(data,callback){
 	}
 }
 
+// Favicon handler
+handlers.favicon = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+		// Read in the favicon's data
+		helpers.get_static_asset('favicon.ico',function(err,data){
+			if(!err && data){
+				callback(200,data,'favicon');
+			}else{
+				callback(500);
+			}
+		});
+	}else{
+		callback(405);
+	}
+}
+
+// Public assets handler
+handlers.public = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+		// Get the filename being requested
+		var name = data.trimmed_path.replace('public/','').trim();
+		if(name.length > 0){
+			// Read in the asset's data
+			helpers.get_static_asset(name,function(err,data){
+				if(!err && data){
+					// Determine the content type (default to plain text)
+					var content_type = 'plain';
+					if(name.indexOf('.css') != -1){
+						content_type = 'css';	
+					}
+					if(name.indexOf('.png') != -1){
+						content_type = 'png';	
+					}
+					if(name.indexOf('.jpg') != -1){
+						content_type = 'jpg';	
+					}
+					if(name.indexOf('.ico') != -1){
+						content_type = 'favicon';	
+					}
+					callback(200,data,content_type);
+				}else{
+					callback(404);
+				}
+			})
+		}else{
+			callback(404);
+		}
+	}else{
+		callback(405);
+	} 
+}
 
 /*
  * JSON API Handlers
