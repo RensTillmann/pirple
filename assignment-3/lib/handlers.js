@@ -25,9 +25,11 @@ handlers.index = function(data,callback){
 
 		// Prepare {tags} for interpolation
 		var template_tags = {
-			'head.title' : 'This is the title test 1',
-			'head.description' : 'Test description 2',
-			'content.title' : 'Hello templated world! 3',
+			'head.title' : 'WebRehab',
+			'head.description' : 'WordPress maintenance, plugin development and security',
+			'content.title' : 'Uptime monitoring',
+			'content.tagline' : 'Made simple',
+			'content.blurb' : 'We ofer free, simple uptime monitoring for HTTP/HTTPS sites of all kinds. When your site goes down, we\'ll send you a text to let you know.',
 			'body.class' : 'index'
 		}
 
@@ -50,6 +52,77 @@ handlers.index = function(data,callback){
 		callback(405,undefined,'html');
 	}
 }
+
+// Create Account
+handlers.account_create = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+
+		// Prepare {tags} for interpolation
+		var template_tags = {
+			'head.title' : 'WebRehab - Create an Account',
+			'head.description' : 'Signup is easy and only takes a few seconds.',
+			'body.class' : 'account-create',
+			'content.title' : 'Create Your Account',
+			'content.tagline' : 'Signup is easy and only takes a few seconds',
+
+		}
+
+		// Read in a template as a string
+		helpers.get_template('account_create',template_tags,function(err,str){
+			if(!err && str){
+				// Add the universal header and footer
+				helpers.process_template(str,template_tags,function(err,str){
+					if(!err && str){
+						callback(200,str,'html');
+					}else{
+						callback(500,undefined,'html');
+					}
+				});
+			}else{
+				callback(500,undefined,'html');
+			}
+		});
+	}else{
+		callback(405,undefined,'html');
+	}
+}
+
+// Create new session
+handlers.session_create = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+
+		// Prepare {tags} for interpolation
+		var template_tags = {
+			'head.title' : 'WebRehab - Login to your Account',
+			'head.description' : 'Please enter your email address and password.',
+			'body.class' : 'session-create',
+			'content.title' : 'Login to your Account',
+			'content.tagline' : 'Enter your email address and password',
+
+		}
+
+		// Read in a template as a string
+		helpers.get_template('session_create',template_tags,function(err,str){
+			if(!err && str){
+				// Add the universal header and footer
+				helpers.process_template(str,template_tags,function(err,str){
+					if(!err && str){
+						callback(200,str,'html');
+					}else{
+						callback(500,undefined,'html');
+					}
+				});
+			}else{
+				callback(500,undefined,'html');
+			}
+		});
+	}else{
+		callback(405,undefined,'html');
+	}
+}
+
 
 // Favicon handler
 handlers.favicon = function(data,callback){

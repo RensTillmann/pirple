@@ -154,11 +154,11 @@ server.unifiedServer = function(req,res){
 server.router = {
 	'' : handlers.index,
 
-	'account/create' : handlers.accountsCreate,
+	'account/create' : handlers.account_create,
 	'account/edit' : handlers.accountsEdit,
 	'account/delete' : handlers.accountsDelete,
 
-	'session/create' : handlers.sessionsCreate,
+	'session/create' : handlers.session_create,
 	'session/deleted' : handlers.sessionsDeleted,
 	
 	'checks/all' : handlers.checksAll,
