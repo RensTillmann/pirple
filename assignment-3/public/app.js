@@ -8,7 +8,7 @@ var app = {};
 
 // Config
 app.config = {
-	'session_token' : false
+	'token' : false
 };
 
 // AJAX Client (for the restful API)
@@ -72,6 +72,33 @@ app.client.request = function(headers,path,method,query_string,payload,callback)
 
 };
 
+// Bind the logout button
+app.bind_logout_button = function(){
+	document.getElementById('logoutButton').addEventListener('click',function(e){
+		// Stop it from redirecting anywhere
+		e.preventDefault();
+		// Log the user out
+		app.logout();
+	});
+};
+
+// Logout the user and redirect them
+app.logout = function(){
+	// Get the current token id
+	var token_id = typeof(app.config.token.id) == 'string' ? app.config.token.id : false;
+
+	// Send the current token to the tokens endpoint to delete it
+	var query_string = {
+		'id' : token_id
+	};
+	app.client.request(undefined,'api/tokens','DELETE',query_string,undefined,function(status,response){
+		// Set the app.config token as false
+		app.set_token(false);
+		// Redirect the user to the logged out page
+		window.location = '/session/deleted';
+	});
+};
+
 // Bind the forms
 app.bind_forms = function(){
 	if(document.querySelector('form')){
@@ -128,7 +155,7 @@ app.form_processor = function(id,payload,response){
 						app.form_validation(id,'An error has occured, please try again','block');
 				}else{
 					// If successful, set the token and redirect the user
-					app.set_session_token(response);
+					app.set_token(response);
 					window.location = '/checks/all';
 				}
 		});
@@ -136,13 +163,20 @@ app.form_processor = function(id,payload,response){
 
 	// If login was successful, set the token in localstorage and redirect the user
 	if(id == 'sessionCreate'){
-		app.set_session_token(response);
+		app.set_token(response);
 		window.location = '/checks/all';
 	}
+
+  // If forms saved successfully and they have success messages, show them
+  var formsWithSuccessMessages = ['accountEdit', 'accountEditPassword'];
+  if(formsWithSuccessMessages.indexOf(formId) > -1){
+    document.querySelector("#"+formId+" .formSuccess").style.display = 'block';
+  }
+
 };
 
 // Get the session toke from localstorage and set it in the app.config object
-app.get_session_token = function(){
+app.get_token = function(){
 	var token = localStorage.getItem('token');
 	if(typeof(token) == 'string'){
 		try{
@@ -171,7 +205,7 @@ app.set_login_class = function(add){
 }
 
 // Set the session token in the app.config object as well as localstorage
-app.set_session_token = function(token){
+app.set_token = function(token){
 		app.config.token = token;
 		var token_string = JSON.stringify(token);
 		localStorage.setItem('token',token_string);
@@ -180,6 +214,53 @@ app.set_session_token = function(token){
 		}else{
 			app.set_login_class(false);
 		}
+};
+
+// Load form data
+app.load_form_data = function(){
+	// Get the current page from the body class
+	var bodyClasses = document.querySelector('body').classList;
+	var primaryClass = typeof(bodyClasses[0]) == 'string' ? bodyClasses[0] : false;
+
+	// Logic for account settings page
+	if(primaryClass=='account-edit'){
+		app.load_account_edit_form_data();
+	}
+};
+
+// Load the account edit form with data
+app.load_account_edit_form_data = function(){
+	// Get the email address from the current token, or log the user out if none is set
+	var email = typeof(app.config.token.email) == 'string' ? app.config.token.email : false;
+	if(email){
+		// Fetch the user data
+		var query_string = {
+			'email' : email
+		};
+
+		// Parse the token to the request header
+		var headers = {
+			'token' : localStorage.getItem('token')
+		};
+		app.client.request(undefined,'api/users','GET',query_string,undefined,function(status,response){
+			if(status==200){
+				// Put the data into the forms as values where needed
+     		//var form = document.querySelector('#accountEdit');
+     		//var selectElement = form.querySelector('input[name="name"]');
+     		//console.log(selectElement);
+     		//console.log(selectElement.value);
+				document.querySelector('#accountEdit input[name="name"]').value = response.name;
+				document.querySelector('#accountEdit input[name="email"]').value = response.email;
+				document.querySelector('#accountEdit input[name="address"]').value = response.address;
+				document.querySelector('#accountEdit input[name="street"]').value = response.street;
+			}else{
+				// If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
+				app.logout();
+			}
+		});
+	}else{
+		app.logout();
+	}
 };
 
 // Loop to renew tokens
@@ -206,25 +287,23 @@ app.renew_token = function(callback){
 				var query_string = {'id' : token.id};
 				app.client.request(undefined,'api/tokens','GET',query_string,undefined,undefined,function(status,response){
 					if(status==200){
-							app.set_session_token(response);
+							app.set_token(response);
 							callback(false);
 					}else{
-							app.set_session_token(false);
+							app.set_token(false);
 							callback(true);
 					}
 				});
 			}else{
-				app.set_session_token(false);
+				app.set_token(false);
 				callback(true);
 			}
 		});
 	}else{
-		app.set_session_token(false);
+		app.set_token(false);
 		callback(true);
 	}
-}
-
-
+};
 
 // Show/hide form errors
 app.form_validation = function(id,msg,display){
@@ -238,6 +317,19 @@ app.form_validation = function(id,msg,display){
 app.init = function(){
 	// Bind all form submissions
 	app.bind_forms();
+
+	// Bind logout button
+	app.bind_logout_button();
+
+	// Get the session toke from localstorage and set it in the app.config object
+	app.get_token();
+
+	// Renew token
+	app.renew_tokens();
+
+  // Load form data on page
+  app.load_form_data();
+
 };
 
 // Call the init processes after the window loads

@@ -149,18 +149,18 @@ server.unifiedServer = function(req,res){
 
 }
 
-// Define the request router 
+// Define the request router
 // This will route all the API request to the correct handler
 server.router = {
 	'' : handlers.index,
 
 	'account/create' : handlers.account_create,
-	'account/edit' : handlers.accountsEdit,
+	'account/edit' : handlers.account_edit,
 	'account/delete' : handlers.accountsDelete,
 
 	'session/create' : handlers.session_create,
-	'session/deleted' : handlers.sessionsDeleted,
-	
+	'session/deleted' : handlers.session_deleted,
+
 	'checks/all' : handlers.checksAll,
 	'checks/create' : handlers.checksCreate,
 	'checks/edit' : handlers.checksEdit,

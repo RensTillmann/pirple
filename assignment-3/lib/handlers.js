@@ -86,7 +86,42 @@ handlers.account_create = function(data,callback){
 	}else{
 		callback(405,undefined,'html');
 	}
-}
+};
+
+// Edit Account
+
+handlers.account_edit = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+		
+		// Prepare {tags} for interpolation
+		var template_tags = {
+			'head.title' : 'WebRehab - Edit your Account',
+			'body.class' : 'account-edit',
+			'content.title' : 'Edit Your Account',
+			'content.tagline' : 'Change your account info'
+		}
+
+		// Read in a template as a string
+		helpers.get_template('account_edit',template_tags,function(err,str){
+			if(!err && str){
+				// Add the universal header and footer
+				helpers.process_template(str,template_tags,function(err,str){
+					if(!err && str){
+						callback(200,str,'html');
+					}else{
+						callback(500,undefined,'html');
+					}
+				});
+			}else{
+				callback(500,undefined,'html');
+			}
+		});
+	}else{
+		callback(405,undefined,'html');
+	}
+
+};
 
 // Create new session
 handlers.session_create = function(data,callback){
@@ -105,6 +140,41 @@ handlers.session_create = function(data,callback){
 
 		// Read in a template as a string
 		helpers.get_template('session_create',template_tags,function(err,str){
+			if(!err && str){
+				// Add the universal header and footer
+				helpers.process_template(str,template_tags,function(err,str){
+					if(!err && str){
+						callback(200,str,'html');
+					}else{
+						callback(500,undefined,'html');
+					}
+				});
+			}else{
+				callback(500,undefined,'html');
+			}
+		});
+	}else{
+		callback(405,undefined,'html');
+	}
+}
+
+// Delete a session
+handlers.session_deleted = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+
+		// Prepare {tags} for interpolation
+		var template_tags = {
+			'head.title' : 'WebRehab - Logged Out',
+			'head.description' : 'You have been logged out of your account.',
+			'body.class' : 'session-deleted',
+			'content.title' : 'Logged Out',
+			'content.tagline' : 'You have been logged out of your account',
+
+		}
+
+		// Read in a template as a string
+		helpers.get_template('session_deleted',template_tags,function(err,str){
 			if(!err && str){
 				// Add the universal header and footer
 				helpers.process_template(str,template_tags,function(err,str){
@@ -154,16 +224,16 @@ handlers.public = function(data,callback){
 					// Determine the content type (default to plain text)
 					var content_type = 'plain';
 					if(name.indexOf('.css') != -1){
-						content_type = 'css';	
+						content_type = 'css';
 					}
 					if(name.indexOf('.png') != -1){
-						content_type = 'png';	
+						content_type = 'png';
 					}
 					if(name.indexOf('.jpg') != -1){
-						content_type = 'jpg';	
+						content_type = 'jpg';
 					}
 					if(name.indexOf('.ico') != -1){
-						content_type = 'favicon';	
+						content_type = 'favicon';
 					}
 					callback(200,data,content_type);
 				}else{
@@ -175,7 +245,7 @@ handlers.public = function(data,callback){
 		}
 	}else{
 		callback(405);
-	} 
+	}
 }
 
 /*
@@ -186,7 +256,7 @@ handlers.public = function(data,callback){
 // Ping
 handlers.ping = function(data,callback){
 	setTimeout(function(){
-		callback(200); // 200 implies that the response contains a payload 
+		callback(200); // 200 implies that the response contains a payload
 	},5000);
 };
 
@@ -218,7 +288,7 @@ handlers._checkout.put = function(data,callback){
 	var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
 	var items = typeof(data.payload.items) == 'object' && data.payload.items instanceof Object ? data.payload.items : [];
 	if(email && items){
-	
+
 		// Get token from headers
 		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
 		// Verify that the given token is valid for the email
@@ -228,7 +298,7 @@ handlers._checkout.put = function(data,callback){
 				_data.read('users',email,function(err,data){
 					if(!err && data){
 						if(items) {
-							
+
 							// Loop through the payload items, and add the menu item information (name, price). and append the quantity
 							var amount = 0; // Total order amount
 							var order_items = [];
@@ -252,7 +322,7 @@ handlers._checkout.put = function(data,callback){
 								}]);
 
 
-								
+
 								_data.update('users',email,data,function(err){
 									if(!err){
 										stripe.charges.create({
@@ -295,7 +365,7 @@ handlers._checkout.put = function(data,callback){
 										callback(500, {'Error' : 'Could not create order.'}); // 500 Internal Server Error
 									}
 								});
-								
+
 
 							}else{
 								callback(500, {'Error' : 'There was nothing to be added to the order, perhaps the menu item no longer exists.'}); // 500 Internal Server Error
@@ -337,11 +407,11 @@ handlers._cart = {};
 handlers._cart.put = function(data,callback){
 	// Check for required field
 	var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
-	if(email){	
+	if(email){
 
 		// Check for optional fields
 		var items = typeof(data.payload.items) == 'string' && data.payload.items.trim().length > 0 ? data.payload.items.trim() : false;
-    	
+
     	// Error if nothing is sent to update
     	if(items){
     		// Get token from headers
@@ -499,7 +569,7 @@ handlers._users.post = function(data,callback){
 			}
 
 		});
-	
+
 	}else{
 		callback(400, {'Error' : 'Missing required fields'}); // 400 Bad Request Error
 	}
@@ -548,7 +618,7 @@ handlers._users.get = function(data,callback){
 handlers._users.put = function(data,callback){
 	// Check for required field
 	var email = typeof(data.payload.email) == 'string' && data.payload.email.trim().length > 0 ? data.payload.email.trim() : false;
-	if(email){	
+	if(email){
 
 		// Check for optional fields
 		var name = typeof(data.payload.name) == 'string' && data.payload.name.trim().length > 0 ? data.payload.name.trim() : false;
@@ -556,7 +626,7 @@ handlers._users.put = function(data,callback){
 		var address = typeof(data.payload.address) == 'string' && data.payload.address.trim().length > 0 ? data.payload.address.trim() : false;
 		var street = typeof(data.payload.street) == 'string' && data.payload.street.trim().length > 0 ? data.payload.street.trim() : false;
 		var password = typeof(data.payload.password) == 'string' && data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
-    	
+
     	// Error if nothing is sent to update
     	if(name || email || address || street || password){
     		// Get token from headers
@@ -609,7 +679,7 @@ handlers._users.put = function(data,callback){
 handlers._users.delete = function(data,callback){
 	// Check for required field
 	var email = typeof(data.query_string_object.email) == 'string' && data.query_string_object.email.trim().length > 0 ? data.query_string_object.email.trim() : false;
-	if(email){	
+	if(email){
 
 		// Get token from headers
 		var token = typeof(data.headers.token) == 'string' ? data.headers.token : false;
@@ -694,7 +764,7 @@ handlers._tokens.post = function(data,callback){
 				// Hash the password and compare it
 				var hashed_pass = helpers.hash(password);
 				if(hashed_pass == data.hashed_pass){
-					// If valid, create a new token with a random name. 
+					// If valid, create a new token with a random name.
 					// Set an expiration date 1 hour in the future.
 					var token_id = helpers.createRandomString(20);
 					var expires = Date.now() + 1000 * 60 * 60;

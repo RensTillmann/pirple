@@ -2,6 +2,8 @@ node_modules
 package-lock.json
 **/.data/
 !/.gitignore
+The-NodeJS-Master-Class-master/*
+The-NodeJS-Master-Class-master.zip
 
 
 
