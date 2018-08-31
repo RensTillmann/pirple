@@ -93,7 +93,7 @@ handlers.account_create = function(data,callback){
 handlers.account_edit = function(data,callback){
 	// Only accept GET requests
 	if(data.method == 'get'){
-		
+
 		// Prepare {tags} for interpolation
 		var template_tags = {
 			'head.title' : 'WebRehab - Edit your Account',
@@ -642,7 +642,7 @@ handlers._users.put = function(data,callback){
 							if(email) data.email = email;
 							if(address) data.address = address;
 							if(street) data.street = street;
-							if(password) data.password = helpers.hash(password);
+							if(password) data.hashed_pass = helpers.hash(password);
 
 							// Store the new data
 							_data.update('users',email,data,function(err){

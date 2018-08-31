@@ -101,42 +101,61 @@ app.logout = function(){
 
 // Bind the forms
 app.bind_forms = function(){
-	if(document.querySelector('form')){
-		document.querySelector('form').addEventListener('submit',function(e){
 
-			// Stop it from submitting
-			e.preventDefault();
-			var id = this.id;
-			var action = this.action;
-			var method = this.method.toUpperCase();
+  if(document.querySelector('form')){
 
-			// Hide the error message (if it's currently shown due to a previous error)
-			document.querySelector('#'+id+' .formError').style.display = 'hidden';
+    var allForms = document.querySelectorAll('form');
+    for(var i = 0; i < allForms.length; i++){
+      allForms[i].addEventListener("submit", function(e){
 
-			// Turn the inputs into a payload
-			var payload = {};
-			var elements = this.elements;
-			for(var i = 0; i < elements.length; i++){
-				if(elements[i].type !== 'submit'){
-					payload[elements[i].name] = elements[i].type == 'checkbox' ? elements[i].checked : elements[i].value;
-				}
-			}
+				// Stop it from submitting
+				e.preventDefault();
+				var id = this.id;
+				var action = this.action;
+				var method = this.method.toUpperCase();
 
-			// Call the API
-			app.client.request(undefined,action,method,undefined,payload,function(status,response){
-					// Display an error on the form if needed
-					if(status !== 200){
+				// Hide the error message (if it's currently shown due to a previous error)
+				document.querySelector('#'+id+' .formError').style.display = 'hidden';
 
-						// Try to get the error from the API, or set a default error message
-						var error = typeof(respons.Error) == 'string' ? response.Error : 'An error has occured, please try again';
-						app.form_validation(id,error,'block');
+	      // Hide the success message (if it's currently shown due to a previous error)
+	      if(document.querySelector("#"+id+" .formSuccess")){
+	        document.querySelector("#"+id+" .formSuccess").style.display = 'none';
+	      }
 
-					}else{
-						// If successful, send to form response processor
-						app.form_processor(id,payload,response);
-					}
+	      // Turn the inputs into a payload
+	      var payload = {};
+	      var elements = this.elements;
+	      for(var i = 0; i < elements.length; i++){
+	        if(elements[i].type !== 'submit'){
+	          var value = elements[i].type == 'checkbox' ? elements[i].checked : elements[i].value;
+	          // Make sure that we set the correct API method if we defined it in our form
+	          if(elements[i].name == '_method'){
+	            method = value;
+	          } else {
+	            payload[elements[i].name] = value;
+	          }
+	        }
+	      }
+				
+				// Call the API
+				app.client.request(undefined,action,method,undefined,payload,function(status,response){
+						// Display an error on the form if needed
+						if(status !== 200){
+							// Logout the user if status code was 403
+							if(status == 403){
+								app.logout();
+							}else{
+								// Try to get the error from the API, or set a default error message
+								var error = typeof(response.Error) == 'string' ? response.Error : 'An error has occured, please try again';
+								app.form_validation(id,error,'block');
+							}
+						}else{
+							// If successful, send to form response processor
+							app.form_processor(id,payload,response);
+						}
+				});
 			});
-		});
+    }
 	}
 };
 
@@ -169,8 +188,8 @@ app.form_processor = function(id,payload,response){
 
   // If forms saved successfully and they have success messages, show them
   var formsWithSuccessMessages = ['accountEdit', 'accountEditPassword'];
-  if(formsWithSuccessMessages.indexOf(formId) > -1){
-    document.querySelector("#"+formId+" .formSuccess").style.display = 'block';
+  if(formsWithSuccessMessages.indexOf(id) > -1){
+    document.querySelector("#"+id+" .formSuccess").style.display = 'block';
   }
 
 };
@@ -245,12 +264,9 @@ app.load_account_edit_form_data = function(){
 		app.client.request(undefined,'api/users','GET',query_string,undefined,function(status,response){
 			if(status==200){
 				// Put the data into the forms as values where needed
-     		//var form = document.querySelector('#accountEdit');
-     		//var selectElement = form.querySelector('input[name="name"]');
-     		//console.log(selectElement);
-     		//console.log(selectElement.value);
 				document.querySelector('#accountEdit input[name="name"]').value = response.name;
 				document.querySelector('#accountEdit input[name="email"]').value = response.email;
+				document.querySelector('#accountEditPassword input[name="email"]').value = response.email;
 				document.querySelector('#accountEdit input[name="address"]').value = response.address;
 				document.querySelector('#accountEdit input[name="street"]').value = response.street;
 			}else{
