@@ -89,7 +89,6 @@ handlers.account_create = function(data,callback){
 };
 
 // Edit Account
-
 handlers.account_edit = function(data,callback){
 	// Only accept GET requests
 	if(data.method == 'get'){
@@ -120,8 +119,42 @@ handlers.account_edit = function(data,callback){
 	}else{
 		callback(405,undefined,'html');
 	}
-
 };
+
+// Account has been deleted
+handlers.account_deleted = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+
+		// Prepare {tags} for interpolation
+		var template_tags = {
+			'head.title' : 'Account Deleted',
+			'head.description' : 'Your account has been deleted.',
+			'body.class' : 'account-deleted',
+			'content.title' : 'Account Deleted',
+			'content.tagline' : 'Your account has been deleted'
+		}
+
+		// Read in a template as a string
+		helpers.get_template('account_deleted',template_tags,function(err,str){
+			if(!err && str){
+				// Add the universal header and footer
+				helpers.process_template(str,template_tags,function(err,str){
+					if(!err && str){
+						callback(200,str,'html');
+					}else{
+						callback(500,undefined,'html');
+					}
+				});
+			}else{
+				callback(500,undefined,'html');
+			}
+		});
+	}else{
+		callback(405,undefined,'html');
+	}
+};	
+
 
 // Create new session
 handlers.session_create = function(data,callback){

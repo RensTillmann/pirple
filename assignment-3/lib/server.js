@@ -156,7 +156,7 @@ server.router = {
 
 	'account/create' : handlers.account_create,
 	'account/edit' : handlers.account_edit,
-	'account/delete' : handlers.accountsDelete,
+	'account/deleted' : handlers.account_deleted,
 
 	'session/create' : handlers.session_create,
 	'session/deleted' : handlers.session_deleted,
