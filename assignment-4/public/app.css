@@ -15,39 +15,6 @@ body,p,h1,h2,h3,h4,h5,h6,div,span,header,footer,img,a,a:hover,a:active,a:visited
   color: #1a1a1a;
   border-width: 0;
 }
-.pizza-menu .qty,
-.pizza-menu .min,
-.pizza-menu .plus {
-  min-width:20px;
-  display:inline-block;
-  -webkit-user-select: none; /* Safari 3.1+ */
-  -moz-user-select: none; /* Firefox 2+ */
-  -ms-user-select: none; /* IE 10+ */
-  user-select: none; /* Standard syntax */
-}
-.pizza-menu .min,
-.pizza-menu .plus {
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
-  display: inline-block;
-  margin: 0px 15px 0px 15px;
-  text-align:center;
-  background-color: #ff6b6b;
-  color: white;
-  -webkit-border-radius: 25px;
-  -moz-border-radius: 25px;
-  border-radius: 25px;
-  cursor:pointer;
-  opacity: 0.5;
-}
-.pizza-menu .plus {
-  background-color: #51a573;
-}
-.pizza-menu .min:hover,
-.pizza-menu .plus:hover {
-  opacity: 1;
-}
 
 .clear{
   float: none;

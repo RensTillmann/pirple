@@ -27,9 +27,9 @@ handlers.index = function(data,callback){
 		var template_tags = {
 			'head.title' : 'WebRehab',
 			'head.description' : 'WordPress maintenance, plugin development and security',
-			'content.title' : 'Pizza delivery',
+			'content.title' : 'Uptime monitoring',
 			'content.tagline' : 'Made simple',
-			'content.blurb' : 'We deliver pizza\'s lightning fast to your doorstep.',
+			'content.blurb' : 'We ofer free, simple uptime monitoring for HTTP/HTTPS sites of all kinds. When your site goes down, we\'ll send you a text to let you know.',
 			'body.class' : 'index'
 		}
 
@@ -52,55 +52,6 @@ handlers.index = function(data,callback){
 		callback(405,undefined,'html');
 	}
 }
-
-// List menu items
-handlers.menu_list = function(data,callback){
-	// Only accept GET requests
-	if(data.method == 'get'){
-
-		// Get menu items from API
-		var items = config.menu_items;
-		var html = '';
-		Object.keys(items).forEach(function(index) {
-			var val = items[index];
-			html += '<tr data-id="'+index+'">';
-			html += '<td align="left">'+val.name+'</td>';
-			html += '<td align="center">$'+(val.price/100)+'</td>';
-			html += '<td align="center"><span class="min">-</span><span class="qty">1</span><span class="plus">+</span></td>';
-			html += '<td align="center"><span class="cta green add-to-cart">Add to cart</span></td>';
-			html += '</tr>';
-		});
-
-		// Prepare {tags} for interpolation
-		var template_tags = {
-			'head.title' : 'Our Pizza\'s',
-			'head.description' : 'Choose from a variaty of pizza\'s.',
-			'body.class' : 'pizza-menu',
-			'content.title' : 'Our Pizza\'s',
-			'content.tagline' : 'Chooes from a variaty of pizza\'s.',
-			'content.items' : html
-		}
-
-		// Read in a template as a string
-		helpers.get_template('menu',template_tags,function(err,str){
-			if(!err && str){
-				// Add the universal header and footer
-				helpers.process_template(str,template_tags,function(err,str){
-					if(!err && str){
-						callback(200,str,'html');
-					}else{
-						callback(500,undefined,'html');
-					}
-				});
-			}else{
-				callback(500,undefined,'html');
-			}
-		});
-	}else{
-		callback(405,undefined,'html');
-	}
-}
-
 
 // Create Account
 handlers.account_create = function(data,callback){
@@ -492,7 +443,7 @@ handlers._cart.put = function(data,callback){
 	if(email){
 
 		// Check for optional fields
-		var items = typeof(data.payload.items) == 'object' ? data.payload.items : [];
+		var items = typeof(data.payload.items) == 'string' && data.payload.items.trim().length > 0 ? data.payload.items.trim() : false;
 
     	// Error if nothing is sent to update
     	if(items){
@@ -504,21 +455,8 @@ handlers._cart.put = function(data,callback){
 					// Lookup the user
 					_data.read('users',email,function(err,data){
 						if(!err && data){
-
-							// Lets loop through the items, and add extra quantity to the item in the cart if it's exists
-							Object.keys(items).forEach(function(index) {
-								var id = index;
-								var qty = parseFloat(items[index]);
-
-								// If this item exists in the cart, update the quantity
-								if(typeof data.cart != 'object') data.cart = {};
-								if(data.cart[id]){
-									data.cart[id] = ""+qty+parseFloat(data.cart[id])+"";
-								}else{
-									// If it doesn't exist yet, let's add it
-									data.cart[id] = ""+qty+"";
-								}
-							});
+							// Update data only if necessary
+							if(items) data.cart = items;
 
 							// Store the new data
 							_data.update('users',email,data,function(err){

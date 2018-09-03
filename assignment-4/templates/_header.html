@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<!-- General meta -->
+		<meta charset="utf-8">
+		<base href="{global.base_url}">
+
+		<!-- Content meta -->
+		<title>{head.title} | {global.app_name}</title>
+		<meta name="description" content="{head.description}">
+
+		<!-- Assets -->
+		<link type="image/x-icon" rel="icon" href="favicon.ico">
+		<script src="public/app.js"></script>
+		<link rel="stylesheet" type="text/css" href="public/app.css" />
+
+	</head>
+	<body class="{body.class}">
+
+		<!-- wrapper -->
+		<div class="wrapper">
+
+			<!-- header -->
+			<div class="header">
+				<!-- logo -->
+				<a href="/" class="logo">
+					<img src="public/logo.png" alt="Logo" />
+				</a>
+
+				<!-- navigation -->
+				<ul class="menu">
+					<li>
+						<a href="/">Home</a>
+					</li>
+					<li class="loggedOut">
+						<a href="/account/create">Signup</a>
+					</li>
+					<li class="loggedOut">
+						<a href="/session/create">Login</a>
+					</li>
+					<li class="loggedIn">
+						<a href="/checks/all">Dashboard</a>
+					</li>
+					<li class="loggedIn">
+						<a href="/account/edit">Account Settings</a>
+					</li>
+					<li class="loggedIn">
+						<a href="#" id="logoutButton">Logout</a>
+					</li>
+				</ul>
+			</div>
+			<!-- end of header -->
+
+			<!-- content -->
+			<div class="content">

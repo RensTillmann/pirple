@@ -161,9 +161,6 @@ server.router = {
 	'session/create' : handlers.session_create,
 	'session/deleted' : handlers.session_deleted,
 
-	// Show all menu items (show all pizza's)
-	'menu' : handlers.menu_list,
-
 	'checks/all' : handlers.checksAll,
 	'checks/create' : handlers.checksCreate,
 	'checks/edit' : handlers.checksEdit,

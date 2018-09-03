@@ -251,55 +251,42 @@ app.set_token = function(token) {
 // Load form data
 app.load_form_data = function() {
     // Get the current page from the body class
-    var body_classes = document.querySelector('body').classList;
-    var body_class = typeof(body_classes[0]) == 'string' ? body_classes[0] : false;
+    var bodyClasses = document.querySelector('body').classList;
+    var primaryClass = typeof(bodyClasses[0]) == 'string' ? bodyClasses[0] : false;
 
-    // Load form data based on body class
-    app.load_form_data_by_class(body_class);
+    // Logic for account settings page
+    if (primaryClass == 'account-edit') {
+        app.load_account_edit_form_data();
+    }
 };
 
 // Load the account edit form with data
-app.load_form_data_by_class = function(body_class) {
-    // Logic for account settings page
-    if (body_class == 'account-edit') {
-        // Get the email address from the current token, or log the user out if none is set
-        var email = typeof(app.config.token.email) == 'string' ? app.config.token.email : false;
-        if (email) {
-            // Fetch the user data
-            var query_string = {
-                'email': email
-            };
+app.load_account_edit_form_data = function() {
+    // Get the email address from the current token, or log the user out if none is set
+    var email = typeof(app.config.token.email) == 'string' ? app.config.token.email : false;
+    if (email) {
+        // Fetch the user data
+        var query_string = {
+            'email': email
+        };
 
-            app.client.request(undefined, 'api/users', 'GET', query_string, undefined, function(status, response) {
-                if (status == 200) {
-                    // Put the data into the forms as values where needed
-                    document.querySelector('#accountEdit input[name="name"]').value = response.name;
-                    document.querySelector('#accountEdit input[name="email"]').value = response.email;
-                    document.querySelector('#accountEditPassword input[name="email"]').value = response.email;
-                    document.querySelector('#accountDelete input[name="email"]').value = response.email;
-                    document.querySelector('#accountEdit input[name="address"]').value = response.address;
-                    document.querySelector('#accountEdit input[name="street"]').value = response.street;
-                } else {
-                    // If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
-                    app.logout();
-                }
-            });
-        } else {
-            app.logout();
-        }
+        app.client.request(undefined, 'api/users', 'GET', query_string, undefined, function(status, response) {
+            if (status == 200) {
+                // Put the data into the forms as values where needed
+                document.querySelector('#accountEdit input[name="name"]').value = response.name;
+                document.querySelector('#accountEdit input[name="email"]').value = response.email;
+                document.querySelector('#accountEditPassword input[name="email"]').value = response.email;
+                document.querySelector('#accountDelete input[name="email"]').value = response.email;
+                document.querySelector('#accountEdit input[name="address"]').value = response.address;
+                document.querySelector('#accountEdit input[name="street"]').value = response.street;
+            } else {
+                // If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
+                app.logout();
+            }
+        });
+    } else {
+        app.logout();
     }
-
-    // Add email field to add cart button page
-    if (body_class == 'pizza-menu') {
-        // Get the email address from the current token, or log the user out if none is set
-        var email = typeof(app.config.token.email) == 'string' ? app.config.token.email : false;
-        if (email) {
-            // Add the email field to the page
-            document.querySelector('input[name="email"]').value = email;
-        } else {
-            app.logout();
-        }
-    }  
 };
 
 // Loop to renew tokens
@@ -354,57 +341,6 @@ app.form_validation = function(id, msg, display) {
     document.querySelector('#' + id + ' .formError').style.display = display;
 };
 
-// Quantity buttons
-app.qty_buttons = function(){
-    var elements = document.querySelectorAll('.pizza-menu .min');
-    for (var i = 0; i < elements.length; i++) {
-        elements[i].addEventListener('click', function(e) {
-            var parent = this.parentElement;
-            var qty = parseFloat(parent.querySelector('.qty').textContent);
-            if(qty==1) return false;
-            parent.querySelector('.qty').innerHTML = qty-1;
-        });
-    }
-    var elements = document.querySelectorAll('.pizza-menu .plus');
-    for (var i = 0; i < elements.length; i++) {
-        elements[i].addEventListener('click', function(e) {
-            var parent = this.parentElement;
-            var qty = parseFloat(parent.querySelector('.qty').textContent);
-            parent.querySelector('.qty').innerHTML = qty+1;
-        });
-    } 
-};
-
-// Bind add to cart button
-app.add_to_cart_btn = function(){
-    var elements = document.querySelectorAll('.pizza-menu .add-to-cart');
-    for (var i = 0; i < elements.length; i++) { 
-        elements[i].addEventListener('click', function(e) {
-            var parent = this.parentElement.parentElement;
-            var qty = parseFloat(parent.querySelector('.qty').textContent);
-            var id = parent.dataset.id;
-            
-            // Set payload fields required for the API request
-            var payload = {};
-            payload['email'] = document.querySelector('input[name="email"]').value;
-            payload['items'] = {};
-            payload['items'][id] = ""+qty+"";
-            
-            // Now add the item to the cart for the given quantity
-            app.client.request(undefined, 'api/cart', 'PUT', undefined, payload, function(status, response) {
-                if (status == 200) {
-                    // Reset the quantity to 1
-                    parent.querySelector('.qty').innerHTML = 1;
-                } else {
-                    alert('Could not process your request, please try again!');
-                    console.log(status, response);
-                }
-            });
-            alert('Add '+qty+' of #'+id+' to the cart');
-        });
-    }
-}
-
 // Init (bootstrapping)
 app.init = function() {
     // Bind all form submissions
@@ -421,12 +357,6 @@ app.init = function() {
 
     // Load form data on page
     app.load_form_data();
-
-    // Bind quantity buttons
-    app.qty_buttons();
-
-    // Bind add to cart buttons
-    app.add_to_cart_btn();
 
 };
 
