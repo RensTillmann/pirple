@@ -182,7 +182,7 @@ app.form_processor = function(id, payload, response) {
             } else {
                 // If successful, set the token and redirect the user
                 app.set_token(response);
-                window.location = '/checks/all';
+                window.location = '/menu';
             }
         });
     }
@@ -190,7 +190,7 @@ app.form_processor = function(id, payload, response) {
     // If login was successful, set the token in localstorage and redirect the user
     if (id == 'sessionCreate') {
         app.set_token(response);
-        window.location = '/checks/all';
+        window.location = '/menu';
     }
 
     // If forms saved successfully and they have success messages, show them
@@ -299,7 +299,63 @@ app.load_form_data_by_class = function(body_class) {
         } else {
             app.logout();
         }
-    }  
+    } 
+
+    // Retrieve cart items for current user
+    if (body_class == 'checkout') {
+        // Get the email address from the current token, or log the user out if none is set
+        var email = typeof(app.config.token.email) == 'string' ? app.config.token.email : false;
+        if (email) {
+            // Fetch the user data
+            var query_string = {
+                'email': email
+            };
+
+            // Get cart items of current user
+            app.client.request(undefined, 'api/cart', 'GET', query_string, undefined, function(status, cart_items) {
+                if (status == 200) {
+                    // Get menu items (hardcoded menu items from config)
+                    app.client.request(undefined, 'api/menu', 'GET', query_string, undefined, function(status, menu_items) {
+                        if (status == 200) {
+                            // Gather list of cart items
+                            var html = '';
+                            var total = 0;
+                            var shipping = 2; // $2 dollar shipping for orders below $20
+                            Object.keys(cart_items).forEach(function(index) {
+                                var val = cart_items[index];
+                                // Only display if the item exists
+                                if(menu_items[index]){
+                                    var total_price = (menu_items[index].price/100)*val;
+                                    total = total+total_price;
+                                    html += '<tr data-id="'+index+'">';
+                                    html += '<td align="left">'+val+' x</td>';
+                                    html += '<td align="left">'+menu_items[index].name+'</td>';
+                                    html += '<td align="center">$'+(menu_items[index].price/100)+'</td>';
+                                    html += '<td align="right">$'+total_price+'</td>';
+                                    html += '</tr>';
+                                }
+                            });
+                            if(total>=20){
+                                shipping = 0; // Free shipping for orders above $20
+                            }
+                            document.querySelector('.checkout .total').innerHTML = 'Total: $'+total;
+                            document.querySelector('.checkout .shipping').innerHTML = 'Shipping: $'+shipping;
+                            document.querySelector('.checkout .subtotal').innerHTML = 'Subtotal: $'+(total+shipping);
+                            document.querySelector('.checkout table tbody').firstChild.outerHTML += html;
+                        } else {
+                            // If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
+                            app.logout();
+                        }
+                    });
+                } else {
+                    // If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
+                    app.logout();
+                }
+            });
+        } else {
+            app.logout();
+        }
+    }
 };
 
 // Loop to renew tokens
@@ -361,7 +417,7 @@ app.qty_buttons = function(){
         elements[i].addEventListener('click', function(e) {
             var parent = this.parentElement;
             var qty = parseFloat(parent.querySelector('.qty').textContent);
-            if(qty==1) return false;
+            if(qty==0) return false;
             parent.querySelector('.qty').innerHTML = qty-1;
         });
     }
@@ -376,31 +432,39 @@ app.qty_buttons = function(){
 };
 
 // Bind add to cart button
-app.add_to_cart_btn = function(){
-    var elements = document.querySelectorAll('.pizza-menu .add-to-cart');
-    for (var i = 0; i < elements.length; i++) { 
-        elements[i].addEventListener('click', function(e) {
-            var parent = this.parentElement.parentElement;
-            var qty = parseFloat(parent.querySelector('.qty').textContent);
-            var id = parent.dataset.id;
-            
+app.proceed_to_checkout = function(){
+
+    if(document.querySelector('.pizza-menu .checkout')){
+        document.querySelector('.pizza-menu .checkout').addEventListener('click', function(e){
+            var parent = this.parentElement;
+            var elements = parent.querySelectorAll('.qty');
+
             // Set payload fields required for the API request
             var payload = {};
             payload['email'] = document.querySelector('input[name="email"]').value;
             payload['items'] = {};
-            payload['items'][id] = ""+qty+"";
             
+            // Loop through all the menu items and find those with a quantity of 1 or higher
+            for (var i = 0; i < elements.length; i++) {
+                // Only add item to cart if quantity is above 0
+                var qty = parseFloat(elements[i].textContent);
+                if(qty>0){
+                    // Grab the item ID
+                    var id = elements[i].parentElement.parentElement.dataset.id;
+                    payload['items'][id] = ""+qty+"";
+                }
+            }
+
             // Now add the item to the cart for the given quantity
             app.client.request(undefined, 'api/cart', 'PUT', undefined, payload, function(status, response) {
                 if (status == 200) {
-                    // Reset the quantity to 1
-                    parent.querySelector('.qty').innerHTML = 1;
+                    // Redirect user to checkout page
+                    window.location = '/checkout';
                 } else {
                     alert('Could not process your request, please try again!');
                     console.log(status, response);
                 }
             });
-            alert('Add '+qty+' of #'+id+' to the cart');
         });
     }
 }
@@ -426,7 +490,7 @@ app.init = function() {
     app.qty_buttons();
 
     // Bind add to cart buttons
-    app.add_to_cart_btn();
+    app.proceed_to_checkout();
 
 };
 

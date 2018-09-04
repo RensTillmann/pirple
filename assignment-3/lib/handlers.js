@@ -66,8 +66,7 @@ handlers.menu_list = function(data,callback){
 			html += '<tr data-id="'+index+'">';
 			html += '<td align="left">'+val.name+'</td>';
 			html += '<td align="center">$'+(val.price/100)+'</td>';
-			html += '<td align="center"><span class="min">-</span><span class="qty">1</span><span class="plus">+</span></td>';
-			html += '<td align="center"><span class="cta green add-to-cart">Add to cart</span></td>';
+			html += '<td align="center"><span class="min">-</span><span class="qty">0</span><span class="plus">+</span></td>';
 			html += '</tr>';
 		});
 
@@ -83,6 +82,40 @@ handlers.menu_list = function(data,callback){
 
 		// Read in a template as a string
 		helpers.get_template('menu',template_tags,function(err,str){
+			if(!err && str){
+				// Add the universal header and footer
+				helpers.process_template(str,template_tags,function(err,str){
+					if(!err && str){
+						callback(200,str,'html');
+					}else{
+						callback(500,undefined,'html');
+					}
+				});
+			}else{
+				callback(500,undefined,'html');
+			}
+		});
+	}else{
+		callback(405,undefined,'html');
+	}
+}
+
+// List menu items
+handlers.checkout_page = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+
+		// Prepare {tags} for interpolation
+		var template_tags = {
+			'head.title' : 'Checkout',
+			'head.description' : 'Review your items and order your pizza\'s.',
+			'body.class' : 'checkout',
+			'content.title' : 'Checkout',
+			'content.tagline' : 'Review and order your pizza\'s.'
+		}
+
+		// Read in a template as a string
+		helpers.get_template('checkout',template_tags,function(err,str){
 			if(!err && str){
 				// Add the universal header and footer
 				helpers.process_template(str,template_tags,function(err,str){
@@ -513,7 +546,7 @@ handlers._cart.put = function(data,callback){
 								// If this item exists in the cart, update the quantity
 								if(typeof data.cart != 'object') data.cart = {};
 								if(data.cart[id]){
-									data.cart[id] = ""+qty+parseFloat(data.cart[id])+"";
+									data.cart[id] = ""+(qty+parseFloat(data.cart[id]))+"";
 								}else{
 									// If it doesn't exist yet, let's add it
 									data.cart[id] = ""+qty+"";
@@ -560,7 +593,16 @@ handlers._cart.get = function(data,callback){
 		// Verify that the given token is valid for the email
 		handlers._tokens.verify(token,email,function(valid){
 			if(valid){
-				callback(200, config.menu_items);
+				// Retrieve cart items from user
+				_data.read('users',email,function(err,data){
+					if(!err && data){
+						// Remove the hashed password from the user object before returning it to the requester
+						var cart = typeof(data.cart) == 'object' ? data.cart : {};
+						callback(200,cart);
+					}else{
+						callback(400, {'Error' : 'Could not find the specified user.'});
+					}
+				});
 			}else{
 				callback(403, {"Error" : "Missing required token in header, or token is invalid."}); // 403 Forbidden Error
 			}

@@ -164,6 +164,9 @@ server.router = {
 	// Show all menu items (show all pizza's)
 	'menu' : handlers.menu_list,
 
+	// Checkout page, to pay for order
+	'checkout' : handlers.checkout_page,
+
 	'checks/all' : handlers.checksAll,
 	'checks/create' : handlers.checksCreate,
 	'checks/edit' : handlers.checksEdit,
