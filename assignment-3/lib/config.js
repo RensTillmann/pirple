@@ -72,6 +72,8 @@ var current_environment = typeof(process.env.NODE_ENV) == 'string' ? process.env
 // Check that the current environment is one of the environments above, if not default to staging
 var export_environment = typeof(environments[current_environment]) == 'object' ? environments[current_environment] : environments.staging;
 
+// 2 dollar shipping costs
+export_environment['shipping'] = 2;
 
 // Export the module
 module.exports = export_environment;

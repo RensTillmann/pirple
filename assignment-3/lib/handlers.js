@@ -8,7 +8,7 @@ var _data = require('./data');
 var helpers = require('./helpers');
 var config = require('./config');
 var stripe = require("stripe")(config.stripe_key);
-var mailgun = require('mailgun-js')({apiKey: config.mailgun_key, domain: config.mailgun_domain});
+//var mailgun = require('mailgun-js')({apiKey: config.mailgun_key, domain: config.mailgun_domain});
 
 // Define all the handlers
 var handlers = {};
@@ -152,6 +152,39 @@ handlers.account_create = function(data,callback){
 
 		// Read in a template as a string
 		helpers.get_template('account_create',template_tags,function(err,str){
+			if(!err && str){
+				// Add the universal header and footer
+				helpers.process_template(str,template_tags,function(err,str){
+					if(!err && str){
+						callback(200,str,'html');
+					}else{
+						callback(500,undefined,'html');
+					}
+				});
+			}else{
+				callback(500,undefined,'html');
+			}
+		});
+	}else{
+		callback(405,undefined,'html');
+	}
+};
+
+// Order History
+handlers.orders_history = function(data,callback){
+	// Only accept GET requests
+	if(data.method == 'get'){
+
+		// Prepare {tags} for interpolation
+		var template_tags = {
+			'head.title' : 'Order History',
+			'body.class' : 'order-history',
+			'content.title' : 'Order History',
+			'content.tagline' : 'Your previously ordered Pizza\'s'
+		}
+
+		// Read in a template as a string
+		helpers.get_template('orders_history',template_tags,function(err,str){
 			if(!err && str){
 				// Add the universal header and footer
 				helpers.process_template(str,template_tags,function(err,str){
@@ -431,12 +464,10 @@ handlers._checkout.put = function(data,callback){
 								if(typeof data.orders === 'undefined'){
 									data.orders = new Array();
 								}
-								data.orders.push([{
+								data.orders.push({
 									date: Date.now(),
 									items: order_items
-								}]);
-
-
+								});
 
 								_data.update('users',email,data,function(err){
 									if(!err){
@@ -463,6 +494,14 @@ handlers._checkout.put = function(data,callback){
 											  subject: 'Pizza will be delivered shortly!',
 											  html: html
 											};
+											
+											// Mailgun account was blocked due exposed credentials on Github :(
+											// Instead let's just log out to console
+											console.log('Sending E-mail:');
+											console.log(data);
+											callback(200);
+
+											/*
 											mailgun.messages().send(data, function (err, body) {
 												if(!err){
 													callback(200);
@@ -472,6 +511,7 @@ handlers._checkout.put = function(data,callback){
 													console.log(err);
 												}
 											});
+											*/
 
 										}).catch((err) => {
 										    callback(500, {'Error' : err});

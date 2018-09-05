@@ -16,6 +16,24 @@ body,p,h1,h2,h3,h4,h5,h6,div,span,header,footer,img,a,a:hover,a:active,a:visited
   border-width: 0;
 }
 
+.order-history .order {
+  margin-bottom:30px;
+  padding:20px;
+  box-shadow:0px 0px 5px 1px #0000001c;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+
+}
+.pizza-menu .checkout {
+  float:right;
+  margin-top:20px; 
+}
+.checkout .place-order,
+.checkout .place-order-loading {
+  float:right;
+  margin-top:20px;
+}
 .checkout .delete {
   cursor:pointer;
   background-color:red;
@@ -188,8 +206,7 @@ body.index .blurb{
   font-weight: bold;
   text-align: center;
   display: inline-block;
-  padding: 15px;
-  width: 150px;
+  padding: 15px 25px;
   cursor: pointer;
 }
 
@@ -199,6 +216,9 @@ body.index .blurb{
 
 .cta.green{
   background-color: #217844 !important;
+}
+.cta.green-disabled{
+  background-color: #21784491 !important;
 }
 
 .cta.red{

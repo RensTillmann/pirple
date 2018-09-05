@@ -7,7 +7,8 @@ var app = {};
 
 // Config
 app.config = {
-    'token': false
+    'token': false,
+    'shipping': 2
 };
 
 // AJAX Client (for the restful API)
@@ -320,7 +321,7 @@ app.load_form_data_by_class = function(body_class) {
                             // Gather list of cart items
                             var html = '';
                             var total = 0;
-                            var shipping = 2; // $2 dollar shipping for orders below $20
+                            var shipping = app.config.shipping; // $2 dollar shipping for orders below $20
                             Object.keys(cart_items).forEach(function(index) {
                                 var val = cart_items[index];
                                 // Only display if the item exists
@@ -371,6 +372,107 @@ app.load_form_data_by_class = function(body_class) {
             app.logout();
         }
     }
+
+    // Retrieve cart items for current user
+    if (body_class == 'order-history') {
+        // Get the email address from the current token, or log the user out if none is set
+        var email = typeof(app.config.token.email) == 'string' ? app.config.token.email : false;
+        if (email) {
+            // Fetch the user data
+            var query_string = {
+                'email': email
+            };
+
+            app.client.request(undefined, 'api/users', 'GET', query_string, undefined, function(status, response) {
+                if (status == 200) {
+                    // Fill page with orders if any
+                    var orders = response.orders;
+                    var html = '';
+                    Object.keys(orders).forEach(function(index) {
+                        var val = orders[index];
+
+                        // Create a new JavaScript Date object based on the timestamp
+                        // multiplied by 1000 so that the argument is in milliseconds, not seconds.
+                        var date = new Date(val.date);
+                        var hours = date.getHours();
+                        var minutes = "0" + date.getMinutes();
+                        var formattedTime = hours + ':' + minutes.substr(-2);
+                        var total = 0;
+                        var shipping = app.config.shipping; // $2 dollar shipping for orders below $20
+                        html += '<div class="order">';
+                            html += '<h2 style="float:left;text-align:left;">#'+(parseFloat(index)+1)+' @ '+date.getDate()+'-'+date.getMonth()+'-'+date.getFullYear()+' | '+formattedTime+'</h2>';
+                            html += '<table>';
+                                html += '<tr>';
+                                    html += '<th style="width:10%;"align="left">Qty.</th><th style="width:20%;" align="left">Pizza</th><th style="width:20%;" align="center">Price</th><th style="width:30%;" align="right">Total price</th>';
+                                html += '</tr>';
+                                // Loop through the Pizza's
+                                for(key in val.items){
+                                    var item = val.items[key];
+                                    var total_price = (item.price/100)*item.quantity;
+                                    total = total+total_price;
+                                    html += '<tr>';
+                                    html += '<td align="center">'+item.quantity+'</td>';
+                                    html += '<td align="center">'+item.name+'</td>';
+                                    html += '<td align="center">$'+(item.price/100)+'</td>';
+                                    html += '<td align="right">$'+total_price+'</td>';
+                                    html += '</tr>';
+                                }
+                                
+                                if(total>=20){
+                                    shipping = 0; // Free shipping for orders above $20
+                                }
+
+                                // First delete all elements
+                                var elements = document.getElementsByClassName('cart-item');
+                                while(elements.length > 0){
+                                    elements[0].parentNode.removeChild(elements[0]);
+                                };
+
+                                html += '<tr>';
+                                    html += '<td align="right" colspan="3"></td><td align="right" class="total">Total: $'+total+'</td>';
+                                html += '</tr>';
+                                html += '<tr>';
+                                    html += '<td align="right" colspan="3"></td><td align="right" class="shipping">Shipping: $'+shipping+'</td>';
+                                html += '</tr>';
+                                html += '<tr>';
+                                    html += '<th align="right" colspan="3"></th><th align="right" class="subtotal">Subtotal: $'+(total+shipping)+'</th>';
+                                html += '</tr>';
+                            html += '</table>';
+                        html += '</div>';
+                    });
+                    document.querySelector('.order-history .orders').innerHTML = html;
+
+                    /*
+                    // Put the data into the forms as values where needed
+                    document.querySelector('#accountEdit input[name="name"]').value = response.name;
+                    document.querySelector('#accountEdit input[name="email"]').value = response.email;
+                    document.querySelector('#accountEditPassword input[name="email"]').value = response.email;
+                    document.querySelector('#accountDelete input[name="email"]').value = response.email;
+                    document.querySelector('#accountEdit input[name="address"]').value = response.address;
+                    document.querySelector('#accountEdit input[name="street"]').value = response.street;
+                    */
+                } else {
+                    // If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
+                    app.logout();
+                }
+            });
+        } else {
+            app.logout();
+        }
+    }    
+
+    // Get total cart items for current user and update cart counter on menu
+    app.get_cart_items(function(status, items, email) {
+        var counter = 0;
+        if(status==200){
+            Object.keys(items).forEach(function(index) {
+                counter++;
+            });
+        }
+        // Update cart counter in menu
+        document.querySelector('.cart-counter').innerHTML = 'Cart ('+counter+')';
+    });
+
 };
 
 // Loop to renew tokens
@@ -427,7 +529,6 @@ app.form_validation = function(id, msg, display) {
 
 // Quantity buttons
 app.qty_buttons = function(){
-    console.log('test');
     // Pizza menu quantity buttons
     var elements = document.querySelectorAll('.pizza-menu .min');
     for (var i = 0; i < elements.length; i++) {
@@ -449,17 +550,14 @@ app.qty_buttons = function(){
 
     // Checkout quantity buttons
     var elements = document.querySelectorAll('.checkout .min');
-    console.log(elements);
 
     for (var i = 0; i < elements.length; i++) {
-        console.log('test1');
         elements[i].addEventListener('click', function(e) {
             var parent = this.parentElement.parentElement;
             var id = parent.dataset.id;
             // Decrease item quantity by 1
             app.get_cart_items(function(status, items, email) {
                 if(status==200){
-                    console.log('test2');
                     // Since our handler will increase the quantity if it's above 0 we need to make sure we set the quantity to 0 for all items except for the one we are deleting
                     Object.keys(items).forEach(function(index) {
                         items[index] = 0;
@@ -471,7 +569,6 @@ app.qty_buttons = function(){
                         'email' : email,
                         'items' : items
                     };
-                    console.log(payload);
                     // Now add the item to the cart for the given quantity
                     app.client.request(undefined, 'api/cart', 'PUT', undefined, payload, function(status, response) {
                         if (status == 200) {
@@ -542,12 +639,11 @@ app.get_cart_items = function(callback){
             if (status == 200) {
                 callback(status, cart_items, email);
             } else {
-                // If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
-                app.logout();
+                callback(true);
             }
         });
     } else {
-        app.logout();
+        callback(true);
     }
 }
 
@@ -638,6 +734,74 @@ app.proceed_to_checkout = function(){
     }
 }
 
+app.place_order = function(){
+    if(document.querySelector('.checkout .place-order')){
+        document.querySelector('.checkout .place-order').addEventListener('click', function(e){
+            
+            // Change class to place-order-loading
+            // This should preven a user from being able to click the button twice
+            var button = this;
+            button.className = "cta green-disabled place-order-loading";
+
+            // Retrieve user cart items
+            app.get_cart_items(function(status, items, email) {
+                if(status==200){
+
+                    // Set payload fields required for the API request
+                    var payload = {
+                        'email' : email,
+                        'items' : items
+                    };
+
+                    // Check if there is anything in the current shopping cart
+                    // If nothing is in the cart display error to the user
+                    var counter = 0;
+                    Object.keys(items).forEach(function(index) {
+                        counter++;
+                    });
+                    if(counter==0){
+                        button.className = "cta green place-order";
+                        alert('Your cart is empty!');
+                    }else{
+                        // Create an order
+                        app.client.request(undefined, 'api/checkout', 'PUT', undefined, payload, function(status, response) {
+                            if (status == 200) {
+                                // If order was successfully placed, empty the cart and redirect to order history
+                                // Empty current cart
+                                Object.keys(items).forEach(function(index) {
+                                    payload['items'][index] = -999;
+                                });
+
+                                // Now add the item to the cart for the given quantity
+                                app.client.request(undefined, 'api/cart', 'PUT', undefined, payload, function(status, response) {
+                                    // No matter what the status code is, we will redirect the user to the order history
+                                    window.location = '/orders/history';
+
+                                    // If status was not 200 log out to console
+                                    if (status != 200) {
+                                        console.log('Could not empty cart!');
+                                        console.log(status, response);
+                                    }
+                                });
+     
+                            } else {
+                                // Something went wrong, report back to the user
+                                button.className = "cta green place-order";
+                                alert('Could not process your request, please try again!');
+                                console.log(status, response);
+                            }
+                        });
+                    }
+                } else {
+                    button.className = "cta green place-order";
+                    alert('Could not process your request, please try again!');
+                    console.log(status, response);
+                }
+            });
+        });
+    }
+};
+
 // Init (bootstrapping)
 app.init = function() {
     // Bind all form submissions
@@ -657,6 +821,9 @@ app.init = function() {
 
     // Bind quantity buttons
     app.qty_buttons();
+
+    // Bind place order button
+    app.place_order();
 
     // Bind add to cart buttons
     app.proceed_to_checkout();

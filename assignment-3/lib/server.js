@@ -158,6 +158,8 @@ server.router = {
 	'account/edit' : handlers.account_edit,
 	'account/deleted' : handlers.account_deleted,
 
+	'orders/history' : handlers.orders_history,
+
 	'session/create' : handlers.session_create,
 	'session/deleted' : handlers.session_deleted,
 
