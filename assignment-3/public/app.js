@@ -327,8 +327,9 @@ app.load_form_data_by_class = function(body_class) {
                                 if(menu_items[index]){
                                     var total_price = (menu_items[index].price/100)*val;
                                     total = total+total_price;
-                                    html += '<tr data-id="'+index+'">';
-                                    html += '<td align="left">'+val+' x</td>';
+                                    html += '<tr class="cart-item" data-id="'+index+'">';
+                                    html += '<td align="left"><span class="delete">x</span></td>';
+                                    html += '<td align="center"><span class="min">-</span><span class="qty">'+val+'</span><span class="plus">+</span></td>';
                                     html += '<td align="left">'+menu_items[index].name+'</td>';
                                     html += '<td align="center">$'+(menu_items[index].price/100)+'</td>';
                                     html += '<td align="right">$'+total_price+'</td>';
@@ -338,10 +339,24 @@ app.load_form_data_by_class = function(body_class) {
                             if(total>=20){
                                 shipping = 0; // Free shipping for orders above $20
                             }
+
+                            // First delete all elements
+                            var elements = document.getElementsByClassName('cart-item');
+                            while(elements.length > 0){
+                                elements[0].parentNode.removeChild(elements[0]);
+                            };
+
                             document.querySelector('.checkout .total').innerHTML = 'Total: $'+total;
                             document.querySelector('.checkout .shipping').innerHTML = 'Shipping: $'+shipping;
                             document.querySelector('.checkout .subtotal').innerHTML = 'Subtotal: $'+(total+shipping);
                             document.querySelector('.checkout table tbody').firstChild.outerHTML += html;
+                            
+                            // Bind delete buttons after items are in place
+                            app.delete_buttons();
+
+                            // Bind quantity buttons
+                            app.qty_buttons();
+
                         } else {
                             // If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
                             app.logout();
@@ -412,6 +427,8 @@ app.form_validation = function(id, msg, display) {
 
 // Quantity buttons
 app.qty_buttons = function(){
+    console.log('test');
+    // Pizza menu quantity buttons
     var elements = document.querySelectorAll('.pizza-menu .min');
     for (var i = 0; i < elements.length; i++) {
         elements[i].addEventListener('click', function(e) {
@@ -429,6 +446,158 @@ app.qty_buttons = function(){
             parent.querySelector('.qty').innerHTML = qty+1;
         });
     } 
+
+    // Checkout quantity buttons
+    var elements = document.querySelectorAll('.checkout .min');
+    console.log(elements);
+
+    for (var i = 0; i < elements.length; i++) {
+        console.log('test1');
+        elements[i].addEventListener('click', function(e) {
+            var parent = this.parentElement.parentElement;
+            var id = parent.dataset.id;
+            // Decrease item quantity by 1
+            app.get_cart_items(function(status, items, email) {
+                if(status==200){
+                    console.log('test2');
+                    // Since our handler will increase the quantity if it's above 0 we need to make sure we set the quantity to 0 for all items except for the one we are deleting
+                    Object.keys(items).forEach(function(index) {
+                        items[index] = 0;
+                    });
+                    // Decrease quantity by 1
+                    items[id] = -1;
+                    // Set payload fields required for the API request
+                    var payload = {
+                        'email' : email,
+                        'items' : items
+                    };
+                    console.log(payload);
+                    // Now add the item to the cart for the given quantity
+                    app.client.request(undefined, 'api/cart', 'PUT', undefined, payload, function(status, response) {
+                        if (status == 200) {
+                            // Cart was updated, do nothing except reloading with fresh cart items
+                            app.load_form_data_by_class('checkout');
+                        } else {
+                            alert('Could not process your request, please try again!');
+                            console.log(status, response);
+                        }
+                    });
+                } else {
+                    alert('Could not process your request, please try again!');
+                    console.log(status, response);
+                }
+            });
+        });
+    } 
+    var elements = document.querySelectorAll('.checkout .plus');
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].addEventListener('click', function(e) {
+            var parent = this.parentElement.parentElement;
+            var id = parent.dataset.id;
+            // Increase item quantity by 1
+            app.get_cart_items(function(status, items, email) {
+                if(status==200){
+                    // Since our handler will increase the quantity if it's above 0 we need to make sure we set the quantity to 0 for all items except for the one we are deleting
+                    Object.keys(items).forEach(function(index) {
+                        items[index] = 0;
+                    });
+                    // Increase quantity by 1
+                    items[id] = 1;
+                    // Set payload fields required for the API request
+                    var payload = {
+                        'email' : email,
+                        'items' : items
+                    };
+                    // Now add the item to the cart for the given quantity
+                    app.client.request(undefined, 'api/cart', 'PUT', undefined, payload, function(status, response) {
+                        if (status == 200) {
+                            // Cart was updated, do nothing except reloading with fresh cart items
+                            app.load_form_data_by_class('checkout');
+                        } else {
+                            alert('Could not process your request, please try again!');
+                            console.log(status, response);
+                        }
+                    });
+                } else {
+                    alert('Could not process your request, please try again!');
+                    console.log(status, response);
+                }
+            });
+        });
+    } 
+
+};
+
+// Function to retrieve cart items for current user
+app.get_cart_items = function(callback){
+    var email = typeof(app.config.token.email) == 'string' ? app.config.token.email : false;
+    if (email) {
+        // Fetch the user data
+        var query_string = {
+            'email': email
+        };
+
+        // Get cart items of current user
+        app.client.request(undefined, 'api/cart', 'GET', query_string, undefined, function(status, cart_items) {
+            if (status == 200) {
+                callback(status, cart_items, email);
+            } else {
+                // If the request comes back as something other than 200, log the user out (on the assumption that the API is temporarily down or the users token is invalid)
+                app.logout();
+            }
+        });
+    } else {
+        app.logout();
+    }
+}
+
+// Delete buttons
+app.delete_buttons = function(){
+    var elements = document.querySelectorAll('.checkout .delete');
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].addEventListener('click', function(e) {
+            var parent = this.parentElement.parentElement;
+            var id = parent.dataset.id;
+
+            // Remove item from users cart
+            app.get_cart_items(function(status, items, email) {
+                if(status==200){
+                    
+                    // Since our handler will increase the quantity if it's above 0 we need to make sure we set the quantity to 0 for all items except for the one we are deleting
+                    Object.keys(items).forEach(function(index) {
+                        items[index] = 0;
+                    });
+
+                    // Remove the item from the object by setting quantity to -999
+                    // This way our handler knows that we wish to delete it from the cart
+                    items[id] = -999;
+
+                    // Set payload fields required for the API request
+                    var payload = {
+                        'email' : email,
+                        'items' : items
+                    };
+
+                    // Now add the item to the cart for the given quantity
+                    app.client.request(undefined, 'api/cart', 'PUT', undefined, payload, function(status, response) {
+                        if (status == 200) {
+                            // Cart was updated, do nothing except reloading with fresh cart items
+                            app.load_form_data_by_class('checkout');
+                        } else {
+                            alert('Could not process your request, please try again!');
+                            console.log(status, response);
+                        }
+                    });
+
+                } else {
+                    alert('Could not process your request, please try again!');
+                    console.log(status, response);
+                }
+
+            });
+
+        });
+    }
 };
 
 // Bind add to cart button

@@ -543,13 +543,21 @@ handlers._cart.put = function(data,callback){
 								var id = index;
 								var qty = parseFloat(items[index]);
 
-								// If this item exists in the cart, update the quantity
-								if(typeof data.cart != 'object') data.cart = {};
-								if(data.cart[id]){
-									data.cart[id] = ""+(qty+parseFloat(data.cart[id]))+"";
+								// Delete it if it's quantity was set to -1
+								// We use this on the checkout page, when a user clicks on the delete button
+								if(qty == -999){
+									if(data.cart[id]){
+										delete data.cart[id];
+									}
 								}else{
-									// If it doesn't exist yet, let's add it
-									data.cart[id] = ""+qty+"";
+									// If this item exists in the cart, update the quantity
+									if(typeof data.cart != 'object') data.cart = {};
+									if(data.cart[id]){
+										data.cart[id] = ""+(qty+parseFloat(data.cart[id]))+"";
+									}else{
+										// If it doesn't exist yet, let's add it
+										data.cart[id] = ""+qty+"";
+									}
 								}
 							});
 

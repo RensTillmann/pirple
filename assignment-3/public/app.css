@@ -15,9 +15,23 @@ body,p,h1,h2,h3,h4,h5,h6,div,span,header,footer,img,a,a:hover,a:active,a:visited
   color: #1a1a1a;
   border-width: 0;
 }
-.pizza-menu .qty,
-.pizza-menu .min,
-.pizza-menu .plus {
+
+.checkout .delete {
+  cursor:pointer;
+  background-color:red;
+  color:white;
+  width:20px;
+  height:20px;
+  text-align: center;
+  line-height: 20px;
+  display:inline-block;
+  -webkit-border-radius: 25px;
+  -moz-border-radius: 25px;
+  border-radius: 25px;
+}
+.pizza-menu .qty, .checkout .qty,
+.pizza-menu .min, .checkout .min,
+.pizza-menu .plus, .checkout .plus {
   min-width:20px;
   display:inline-block;
   -webkit-user-select: none; /* Safari 3.1+ */
@@ -25,8 +39,8 @@ body,p,h1,h2,h3,h4,h5,h6,div,span,header,footer,img,a,a:hover,a:active,a:visited
   -ms-user-select: none; /* IE 10+ */
   user-select: none; /* Standard syntax */
 }
-.pizza-menu .min,
-.pizza-menu .plus {
+.pizza-menu .min, .checkout .min,
+.pizza-menu .plus, .checkout .plus {
   width: 20px;
   height: 20px;
   line-height: 20px;
@@ -41,11 +55,11 @@ body,p,h1,h2,h3,h4,h5,h6,div,span,header,footer,img,a,a:hover,a:active,a:visited
   cursor:pointer;
   opacity: 0.5;
 }
-.pizza-menu .plus {
+.pizza-menu .plus, .checkout .plus {
   background-color: #51a573;
 }
-.pizza-menu .min:hover,
-.pizza-menu .plus:hover {
+.pizza-menu .min:hover, .checkout .min:hover,
+.pizza-menu .plus:hover, .checkout .plus:hover {
   opacity: 1;
 }
 
